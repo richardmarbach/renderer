@@ -12,7 +12,7 @@ const Window = struct {
     renderer: *c.SDL_Renderer,
 
     allocator: std.mem.Allocator,
-    colorBuffer: []u32,
+    color_buffer: []u32,
 
     pub fn init(allocator: std.mem.Allocator) !Window {
         if (c.SDL_Init(c.SDL_INIT_EVERYTHING) != 0) {
@@ -36,13 +36,17 @@ const Window = struct {
         return Window{
             .window = window,
             .renderer = renderer,
-            .colorBuffer = try allocator.alloc(u32, WINDOW_WIDTH * WINDOW_HEIGHT),
+            .color_buffer = try allocator.alloc(u32, WINDOW_WIDTH * WINDOW_HEIGHT),
             .allocator = allocator,
         };
     }
 
+    pub fn clear_color_buffer(self: *Window, color: u32) void {
+        @memset(self.color_buffer, color);
+    }
+
     pub fn deinit(self: *Window) void {
-        self.allocator.free(self.colorBuffer);
+        self.allocator.free(self.color_buffer);
         c.SDL_DestroyRenderer(self.renderer);
         c.SDL_DestroyWindow(self.window);
         c.SDL_Quit();
@@ -73,11 +77,21 @@ pub fn main() !void {
     var window = try Window.init(arena.allocator());
     defer window.deinit();
 
+    const color_buffer_texture = c.SDL_CreateTexture(window.renderer, c.SDL_PIXELFORMAT_ARGB8888, c.SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT) orelse {
+        c.SDL_Log("Unable to create texture: %s", c.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+
     while (isRunning) {
         processInput();
 
-        _ = c.SDL_SetRenderDrawColor(window.renderer, 255, 0, 0, 255);
+        _ = c.SDL_SetRenderDrawColor(window.renderer, 0, 0, 0, 255);
         _ = c.SDL_RenderClear(window.renderer);
+
+        window.clear_color_buffer(0xFFFFFF00);
+
+        _ = c.SDL_UpdateTexture(color_buffer_texture, null, window.color_buffer.ptr, WINDOW_WIDTH * @sizeOf(u32));
+        _ = c.SDL_RenderCopy(window.renderer, color_buffer_texture, null, null);
 
         c.SDL_RenderPresent(window.renderer);
     }
