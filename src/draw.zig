@@ -8,7 +8,6 @@ pub const Buffer = struct {
 
     pub fn init(allocator: std.mem.Allocator, width: usize, height: usize) !Buffer {
         const buffer = try allocator.alloc(u32, width * height);
-        @memset(buffer, 0xFF000000);
         return .{ .allocator = allocator, .buffer = buffer, .width = width, .height = height };
     }
 
