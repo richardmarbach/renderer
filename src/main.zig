@@ -87,6 +87,16 @@ fn draw_grid(window: *Window) void {
     }
 }
 
+fn draw_rect(window: *Window, x: usize, y: usize, width: usize, height: usize, color: u32) void {
+    const h = @min(y + height, window_height);
+    const w = @min(x + width, window_width);
+    for (y..h) |row| {
+        for (x..w) |col| {
+            window.color_buffer[row * window_width + col] = color;
+        }
+    }
+}
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -106,6 +116,7 @@ pub fn main() !void {
         _ = c.SDL_RenderClear(window.renderer);
 
         draw_grid(&window);
+        draw_rect(&window, 200, 300, 50, 100, 0xFFFFFF00);
         _ = c.SDL_UpdateTexture(color_buffer_texture, null, window.color_buffer.ptr, @as(i32, @bitCast(window_width)) * @sizeOf(i32));
         _ = c.SDL_RenderCopy(window.renderer, color_buffer_texture, null, null);
 
