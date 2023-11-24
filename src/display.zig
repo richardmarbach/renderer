@@ -54,12 +54,10 @@ pub const Display = struct {
         _ = c.SDL_RenderClear(self.renderer);
     }
 
-    pub fn draw_buffer(self: *Display, buffer: []u32) void {
+    pub fn render(self: *Display, buffer: []u32) void {
         _ = c.SDL_UpdateTexture(self.buffer_texture, null, buffer.ptr, @bitCast(self.width * @sizeOf(i32)));
         _ = c.SDL_RenderCopy(self.renderer, self.buffer_texture, null, null);
-    }
 
-    pub fn render(self: *Display) void {
         c.SDL_RenderPresent(self.renderer);
     }
 };

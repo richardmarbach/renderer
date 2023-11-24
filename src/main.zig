@@ -5,23 +5,30 @@ const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 
-var isRunning: bool = true;
+const State = struct {
+    is_running: bool = true,
+};
 
-pub fn processInput() void {
+fn process_input(state: *State) void {
     var event: c.SDL_Event = undefined;
     while (c.SDL_PollEvent(&event) != 0) {
         switch (event.type) {
             c.SDL_QUIT => {
-                isRunning = false;
+                state.is_running = false;
             },
             c.SDL_KEYDOWN => {
                 if (event.key.keysym.sym == c.SDLK_ESCAPE) {
-                    isRunning = false;
+                    state.is_running = false;
                 }
             },
             else => {},
         }
     }
+}
+
+fn update(draw_buffer: *DrawBuffer) void {
+    draw_buffer.draw_grid();
+    draw_buffer.draw_rect(200, 300, 50, 100, 0xFFFFFF00);
 }
 
 pub fn main() !void {
@@ -35,17 +42,15 @@ pub fn main() !void {
     var draw_buffer = try DrawBuffer.init(allocator, display.width, display.height);
     defer draw_buffer.deinit();
 
-    while (isRunning) {
-        processInput();
+    var state = State{};
+    while (state.is_running) {
+        process_input(&state);
 
+        draw_buffer.clear();
         display.clear();
 
-        draw_buffer.draw_grid();
-        draw_buffer.draw_rect(200, 300, 50, 100, 0xFFFFFF00);
+        update(&draw_buffer);
 
-        display.draw_buffer(draw_buffer.buffer);
-        draw_buffer.clear();
-
-        display.render();
+        display.render(draw_buffer.buffer);
     }
 }
