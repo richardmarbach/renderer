@@ -28,7 +28,7 @@ fn process_input(state: *State) void {
 
 fn update(draw_buffer: *draw.Buffer) void {
     draw.grid(draw_buffer);
-    draw.rect(draw_buffer, 200, 300, 50, 100, 0xFFFFFF00);
+    draw_buffer.fill_rect(200, 300, 50, 100, 0xFFFFFF00);
 }
 
 pub fn main() !void {
