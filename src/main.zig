@@ -1,24 +1,84 @@
 const std = @import("std");
+const c = @cImport({
+    @cInclude("SDL2/SDL.h");
+});
 
-pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+var isRunning: bool = true;
+const WINDOW_WIDTH = 800;
+const WINDOW_HEIGHT = 600;
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+const Window = struct {
+    window: *c.SDL_Window,
+    renderer: *c.SDL_Renderer,
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    allocator: std.mem.Allocator,
+    colorBuffer: []u32,
 
-    try bw.flush(); // don't forget to flush!
+    pub fn init(allocator: std.mem.Allocator) !Window {
+        if (c.SDL_Init(c.SDL_INIT_EVERYTHING) != 0) {
+            c.SDL_Log("Unable to initialize SDL: %s", c.SDL_GetError());
+            return error.SDLInitializationFailed;
+        }
+        errdefer c.SDL_Quit();
+
+        const window = c.SDL_CreateWindow(null, c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, c.SDL_WINDOW_BORDERLESS) orelse {
+            c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
+            return error.SDLInitializationFailed;
+        };
+        errdefer c.SDL_DestroyWindow(window);
+
+        const renderer = c.SDL_CreateRenderer(window, -1, 0) orelse {
+            c.SDL_Log("Unable to create renderer: %s", c.SDL_GetError());
+            return error.SDLInitializationFailed;
+        };
+        errdefer c.SDL_DestroyRenderer(renderer);
+
+        return Window{
+            .window = window,
+            .renderer = renderer,
+            .colorBuffer = try allocator.alloc(u32, WINDOW_WIDTH * WINDOW_HEIGHT),
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: *Window) void {
+        self.allocator.free(self.colorBuffer);
+        c.SDL_DestroyRenderer(self.renderer);
+        c.SDL_DestroyWindow(self.window);
+        c.SDL_Quit();
+    }
+};
+
+pub fn processInput() void {
+    var event: c.SDL_Event = undefined;
+    while (c.SDL_PollEvent(&event) != 0) {
+        switch (event.type) {
+            c.SDL_QUIT => {
+                isRunning = false;
+            },
+            c.SDL_KEYDOWN => {
+                if (event.key.keysym.sym == c.SDLK_ESCAPE) {
+                    isRunning = false;
+                }
+            },
+            else => {},
+        }
+    }
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+pub fn main() !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    var window = try Window.init(arena.allocator());
+    defer window.deinit();
+
+    while (isRunning) {
+        processInput();
+
+        _ = c.SDL_SetRenderDrawColor(window.renderer, 255, 0, 0, 255);
+        _ = c.SDL_RenderClear(window.renderer);
+
+        c.SDL_RenderPresent(window.renderer);
+    }
 }
