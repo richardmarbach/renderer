@@ -4,8 +4,8 @@ const c = @cImport({
 });
 
 var isRunning: bool = true;
-const WINDOW_WIDTH = 800;
-const WINDOW_HEIGHT = 600;
+var window_width: i32 = 800;
+var window_height: i32 = 600;
 
 const Window = struct {
     window: *c.SDL_Window,
@@ -21,7 +21,12 @@ const Window = struct {
         }
         errdefer c.SDL_Quit();
 
-        const window = c.SDL_CreateWindow(null, c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, c.SDL_WINDOW_BORDERLESS) orelse {
+        var displayMode: c.SDL_DisplayMode = undefined;
+        _ = c.SDL_GetCurrentDisplayMode(0, &displayMode);
+        window_width = displayMode.w;
+        window_height = displayMode.h;
+
+        const window = c.SDL_CreateWindow(null, c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, window_width, window_height, c.SDL_WINDOW_BORDERLESS) orelse {
             c.SDL_Log("Unable to create window: %s", c.SDL_GetError());
             return error.SDLInitializationFailed;
         };
@@ -33,10 +38,12 @@ const Window = struct {
         };
         errdefer c.SDL_DestroyRenderer(renderer);
 
+        _ = c.SDL_SetWindowFullscreen(window, c.SDL_WINDOW_FULLSCREEN);
+
         return Window{
             .window = window,
             .renderer = renderer,
-            .color_buffer = try allocator.alloc(u32, WINDOW_WIDTH * WINDOW_HEIGHT),
+            .color_buffer = try allocator.alloc(u32, @as(u32, @bitCast(window_width * window_height))),
             .allocator = allocator,
         };
     }
@@ -77,7 +84,7 @@ pub fn main() !void {
     var window = try Window.init(arena.allocator());
     defer window.deinit();
 
-    const color_buffer_texture = c.SDL_CreateTexture(window.renderer, c.SDL_PIXELFORMAT_ARGB8888, c.SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT) orelse {
+    const color_buffer_texture = c.SDL_CreateTexture(window.renderer, c.SDL_PIXELFORMAT_ARGB8888, c.SDL_TEXTUREACCESS_STREAMING, window_width, window_height) orelse {
         c.SDL_Log("Unable to create texture: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -90,7 +97,7 @@ pub fn main() !void {
 
         window.clear_color_buffer(0xFFFFFF00);
 
-        _ = c.SDL_UpdateTexture(color_buffer_texture, null, window.color_buffer.ptr, WINDOW_WIDTH * @sizeOf(u32));
+        _ = c.SDL_UpdateTexture(color_buffer_texture, null, window.color_buffer.ptr, window_width * @sizeOf(u32));
         _ = c.SDL_RenderCopy(window.renderer, color_buffer_texture, null, null);
 
         c.SDL_RenderPresent(window.renderer);
