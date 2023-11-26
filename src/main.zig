@@ -35,19 +35,19 @@ fn process_input(state: *State) void {
     }
 }
 
-const FOV_FACTOR: f32 = 128;
+const FOV_FACTOR: f32 = 640;
 
 fn project(vec3: Vec3) Vec2 {
-    return Vec2{ .x = (vec3.x * FOV_FACTOR), .y = (vec3.y * FOV_FACTOR) };
+    return Vec2{ .x = (vec3.x * FOV_FACTOR) / vec3.z, .y = (vec3.y * FOV_FACTOR) / vec3.z };
 }
 
 const CUBE_POINTS = 9 * 9 * 9;
 const CubePoints = [CUBE_POINTS]Vec3;
 const ProjectedCubePoints = [CUBE_POINTS]Vec2;
 
-fn update(draw_buffer: *draw.Buffer, cube_points: *CubePoints, projected_points: *ProjectedCubePoints) void {
+fn update(draw_buffer: *draw.Buffer, cube_points: *CubePoints, projected_points: *ProjectedCubePoints, camera_position: *const Vec3) void {
     for (cube_points, 0..) |point, i| {
-        projected_points[i] = project(point);
+        projected_points[i] = project(.{ .x = point.x, .y = point.y, .z = point.z - camera_position.z });
     }
 
     for (projected_points) |point| {
@@ -65,6 +65,8 @@ pub fn main() !void {
 
     var draw_buffer = try draw.Buffer.init(allocator, display.width, display.height);
     defer draw_buffer.deinit();
+
+    const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
 
     var projected_points: ProjectedCubePoints = undefined;
     var cube_points: CubePoints = undefined;
@@ -87,7 +89,7 @@ pub fn main() !void {
 
         draw.clear(&draw_buffer);
 
-        update(&draw_buffer, &cube_points, &projected_points);
+        update(&draw_buffer, &cube_points, &projected_points, &camera_position);
 
         display.render(draw_buffer.buffer);
     }
