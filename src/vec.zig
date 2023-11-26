@@ -1,10 +1,10 @@
 pub fn Vec2(comptime T: type) type {
     const SimdVec2 = @Vector(2, T);
 
-    return extern struct {
+    return packed struct {
         const Self = @This();
 
-        x: T align(@alignOf(SimdVec2)),
+        x: T,
         y: T,
 
         inline fn fromSimd(simd: SimdVec2) Self {
@@ -20,10 +20,10 @@ pub fn Vec2(comptime T: type) type {
 pub fn Vec3(comptime T: type) type {
     const SimdVec3 = @Vector(3, T);
 
-    return extern struct {
+    return packed struct {
         const Self = @This();
 
-        x: T align(@alignOf(SimdVec3)),
+        x: T,
         y: T,
         z: T,
 
@@ -55,6 +55,16 @@ pub fn Vec3(comptime T: type) type {
                 .y = self.x * sin + self.y * cos,
                 .z = self.z,
             };
+        }
+
+        pub fn magnitude(self: Self) T {
+            const v = self.toSimd();
+            return @sqrt(@reduce(.Add, v * v));
+        }
+
+        pub fn add_s(self: Self, n: T) Self {
+            const amount: SimdVec3 = @splat(n);
+            return fromSimd(self.toSimd() + amount);
         }
 
         inline fn fromSimd(simd: SimdVec3) Self {

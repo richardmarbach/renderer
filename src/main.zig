@@ -47,9 +47,7 @@ const ProjectedCubePoints = [CUBE_POINTS]Vec2;
 var cube_rotation = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
 
 fn update(draw_buffer: *draw.Buffer, cube_points: *CubePoints, projected_points: *ProjectedCubePoints, camera_position: *const Vec3) void {
-    cube_rotation.x += 0.01;
-    cube_rotation.y += 0.01;
-    cube_rotation.z += 0.01;
+    cube_rotation = cube_rotation.add_s(0.01);
 
     for (cube_points, 0..) |point, i| {
         var rotated = point.rotate_x(cube_rotation.x);
