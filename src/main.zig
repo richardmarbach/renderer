@@ -44,10 +44,21 @@ fn project(vec3: Vec3) Vec2 {
 const CUBE_POINTS = 9 * 9 * 9;
 const CubePoints = [CUBE_POINTS]Vec3;
 const ProjectedCubePoints = [CUBE_POINTS]Vec2;
+var cube_rotation = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
 
 fn update(draw_buffer: *draw.Buffer, cube_points: *CubePoints, projected_points: *ProjectedCubePoints, camera_position: *const Vec3) void {
+    cube_rotation.x += 0.01;
+    cube_rotation.y += 0.01;
+    cube_rotation.z += 0.01;
+
     for (cube_points, 0..) |point, i| {
-        projected_points[i] = project(.{ .x = point.x, .y = point.y, .z = point.z - camera_position.z });
+        var rotated = point.rotate_x(cube_rotation.x);
+        rotated = rotated.rotate_y(cube_rotation.y);
+        rotated = rotated.rotate_z(cube_rotation.z);
+
+        rotated.z -= camera_position.z;
+
+        projected_points[i] = project(rotated);
     }
 
     for (projected_points) |point| {
