@@ -60,4 +60,16 @@ pub const Display = struct {
 
         c.SDL_RenderPresent(self.renderer);
     }
+
+    pub fn ticks() u32 {
+        return c.SDL_GetTicks();
+    }
+
+    pub fn delta_time(previous_frame_time: u32) f32 {
+        return @as(f32, @floatFromInt(ticks() - previous_frame_time)) / 1000.0;
+    }
+
+    pub fn wait(time: u32) void {
+        c.SDL_Delay(time);
+    }
 };

@@ -45,9 +45,18 @@ const CUBE_POINTS = 9 * 9 * 9;
 const CubePoints = [CUBE_POINTS]Vec3;
 const ProjectedCubePoints = [CUBE_POINTS]Vec2;
 var cube_rotation = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
+var previous_frame_time: u32 = 0.0;
 
 fn update(draw_buffer: *draw.Buffer, cube_points: *CubePoints, projected_points: *ProjectedCubePoints, camera_position: *const Vec3) void {
-    cube_rotation = cube_rotation.add_s(0.01);
+    const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(previous_frame_time));
+    const time_to_wait: i32 = 33 - time_passed;
+    if (time_to_wait > 0 and time_to_wait <= 33) {
+        Display.wait(@intCast(time_to_wait));
+    }
+    const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
+    previous_frame_time = Display.ticks();
+
+    cube_rotation = cube_rotation.add_s(1.0 * delta_time);
 
     for (cube_points, 0..) |point, i| {
         var rotated = point.rotate_x(cube_rotation.x);
