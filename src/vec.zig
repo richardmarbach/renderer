@@ -57,6 +57,14 @@ pub fn Vec3(comptime T: type) type {
             };
         }
 
+        pub fn sub(self: Self, other: Self) Self {
+            return Self{
+                .x = self.x - other.x,
+                .y = self.y - other.y,
+                .z = self.z - other.z,
+            };
+        }
+
         pub fn magnitude(self: Self) T {
             const v = self.toSimd();
             return @sqrt(@reduce(.Add, v * v));

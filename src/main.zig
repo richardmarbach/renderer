@@ -2,6 +2,8 @@ const std = @import("std");
 const Display = @import("display.zig").Display;
 const draw = @import("draw.zig");
 const vec = @import("vec.zig");
+const mesh = @import("mesh.zig");
+const Triangle = @import("triangle.zig").Triangle;
 const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
@@ -41,13 +43,11 @@ fn project(vec3: Vec3) Vec2 {
     return Vec2{ .x = (vec3.x * FOV_FACTOR) / vec3.z, .y = (vec3.y * FOV_FACTOR) / vec3.z };
 }
 
-const CUBE_POINTS = 9 * 9 * 9;
-const CubePoints = [CUBE_POINTS]Vec3;
-const ProjectedCubePoints = [CUBE_POINTS]Vec2;
 var cube_rotation = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
 var previous_frame_time: u32 = 0.0;
+var triangles_to_render: [mesh.faces.len]Triangle = undefined;
 
-fn update(draw_buffer: *draw.Buffer, cube_points: *CubePoints, projected_points: *ProjectedCubePoints, camera_position: *const Vec3) void {
+fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3) void {
     const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(previous_frame_time));
     const time_to_wait: i32 = 33 - time_passed;
     if (time_to_wait > 0 and time_to_wait <= 33) {
@@ -58,18 +58,29 @@ fn update(draw_buffer: *draw.Buffer, cube_points: *CubePoints, projected_points:
 
     cube_rotation = cube_rotation.add_s(1.0 * delta_time);
 
-    for (cube_points, 0..) |point, i| {
-        var rotated = point.rotate_x(cube_rotation.x);
-        rotated = rotated.rotate_y(cube_rotation.y);
-        rotated = rotated.rotate_z(cube_rotation.z);
+    for (mesh.faces, 0..) |face, i| {
+        const face_vertices = [3]Vec3{ mesh.vertices[face.a - 1], mesh.vertices[face.b - 1], mesh.vertices[face.c - 1] };
 
-        rotated.z -= camera_position.z;
+        var projected_triangle: Triangle = undefined;
+        for (face_vertices, 0..) |vertex, j| {
+            const rotated_vertex = vertex.rotate_x(cube_rotation.x)
+                .rotate_y(cube_rotation.y)
+                .rotate_z(cube_rotation.z);
 
-        projected_points[i] = project(rotated);
+            var projected_point = project(rotated_vertex.sub(camera_position.*));
+            projected_point.x += draw_buffer.width_f32() / 2.0;
+            projected_point.y += draw_buffer.height_f32() / 2.0;
+
+            projected_triangle.points[j] = projected_point;
+        }
+
+        triangles_to_render[i] = projected_triangle;
     }
 
-    for (projected_points) |point| {
-        draw_buffer.fill_rect(@as(i64, @intFromFloat(point.x + draw_buffer.width_f32() / 2.0)), @as(i64, @intFromFloat(point.y + draw_buffer.height_f32() / 2.0)), 4, 4, 0xFFFFFF00);
+    for (triangles_to_render) |triangle| {
+        draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[0].x)), @as(i64, @intFromFloat(triangle.points[0].y)), 3, 3, 0xFFFFFF00);
+        draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[1].x)), @as(i64, @intFromFloat(triangle.points[1].y)), 3, 3, 0xFFFFFF00);
+        draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[2].x)), @as(i64, @intFromFloat(triangle.points[2].y)), 3, 3, 0xFFFFFF00);
     }
 }
 
@@ -86,28 +97,13 @@ pub fn main() !void {
 
     const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
 
-    var projected_points: ProjectedCubePoints = undefined;
-    var cube_points: CubePoints = undefined;
-    var point_count: usize = 0;
-    var x: f32 = -1.0;
-    while (x <= 1.0) : (x += 0.25) {
-        var y: f32 = -1.0;
-        while (y <= 1.0) : (y += 0.25) {
-            var z: f32 = -1.0;
-            while (z <= 1.0) : (z += 0.25) {
-                cube_points[point_count] = Vec3{ .x = x, .y = y, .z = z };
-                point_count += 1;
-            }
-        }
-    }
-
     var state = State{};
     while (state.is_running) {
         process_input(&state);
 
         draw.clear(&draw_buffer);
 
-        update(&draw_buffer, &cube_points, &projected_points, &camera_position);
+        update(&draw_buffer, &camera_position);
 
         display.render(draw_buffer.buffer);
     }
