@@ -62,6 +62,12 @@ pub const Buffer = struct {
             current_y += y_inc;
         }
     }
+
+    pub fn triangle(self: *Buffer, x0: i64, y0: i64, x1: i64, y1: i64, x2: i64, y2: i64, color: u32) void {
+        self.line(x0, y0, x1, y1, color);
+        self.line(x1, y1, x2, y2, color);
+        self.line(x2, y2, x0, y0, color);
+    }
 };
 
 pub fn grid(buf: *Buffer) void {
