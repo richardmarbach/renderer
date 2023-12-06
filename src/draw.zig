@@ -44,6 +44,24 @@ pub const Buffer = struct {
             }
         }
     }
+
+    pub fn line(self: *Buffer, x0: i64, y0: i64, x1: i64, y1: i64, color: u32) void {
+        const delta_x = x1 - x0;
+        const delta_y = y1 - y0;
+        const side_length = if (@abs(delta_x) >= @abs(delta_y)) @abs(delta_x) else @abs(delta_y);
+
+        const x_inc: f32 = @as(f32, @floatFromInt(delta_x)) / @as(f32, @floatFromInt(side_length));
+        const y_inc: f32 = @as(f32, @floatFromInt(delta_y)) / @as(f32, @floatFromInt(side_length));
+
+        var current_x: f32 = @floatFromInt(x0);
+        var current_y: f32 = @floatFromInt(y0);
+
+        for (0..side_length) |_| {
+            self.set(@intFromFloat(@round(current_x)), @intFromFloat(@round(current_y)), color);
+            current_x += x_inc;
+            current_y += y_inc;
+        }
+    }
 };
 
 pub fn grid(buf: *Buffer) void {
