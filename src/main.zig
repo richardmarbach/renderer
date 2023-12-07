@@ -45,9 +45,11 @@ fn project(vec3: Vec3) Vec2 {
 
 var cube_rotation = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
 var previous_frame_time: u32 = 0.0;
-var triangles_to_render: [mesh.faces.len]Triangle = undefined;
+var triangles_to_render: std.ArrayList(Triangle) = undefined;
 
-fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3) void {
+fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3) !void {
+    triangles_to_render.clearRetainingCapacity();
+
     const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(previous_frame_time));
     const time_to_wait: i32 = 33 - time_passed;
     if (time_to_wait > 0 and time_to_wait <= 33) {
@@ -58,7 +60,7 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3) void {
 
     cube_rotation = cube_rotation.add_s(1.0 * delta_time);
 
-    for (mesh.faces, 0..) |face, i| {
+    for (mesh.faces) |face| {
         const face_vertices = [3]Vec3{ mesh.vertices[face.a - 1], mesh.vertices[face.b - 1], mesh.vertices[face.c - 1] };
 
         var projected_triangle: Triangle = undefined;
@@ -74,10 +76,12 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3) void {
             projected_triangle.points[j] = projected_point;
         }
 
-        triangles_to_render[i] = projected_triangle;
+        try triangles_to_render.append(projected_triangle);
     }
 
-    for (triangles_to_render) |triangle| {
+    draw.grid(draw_buffer);
+
+    for (triangles_to_render.items) |triangle| {
         draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[0].x)), @as(i64, @intFromFloat(triangle.points[0].y)), 3, 3, 0xFFFFFF00);
         draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[1].x)), @as(i64, @intFromFloat(triangle.points[1].y)), 3, 3, 0xFFFFFF00);
         draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[2].x)), @as(i64, @intFromFloat(triangle.points[2].y)), 3, 3, 0xFFFFFF00);
@@ -90,6 +94,9 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
+
+    triangles_to_render = std.ArrayList(Triangle).init(allocator);
+    defer triangles_to_render.deinit();
 
     var display = try Display.init();
     defer display.deinit();
@@ -105,7 +112,7 @@ pub fn main() !void {
 
         draw.clear(&draw_buffer);
 
-        update(&draw_buffer, &camera_position);
+        try update(&draw_buffer, &camera_position);
 
         display.render(draw_buffer.buffer);
     }
