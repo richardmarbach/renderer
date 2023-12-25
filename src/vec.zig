@@ -7,6 +7,11 @@ pub fn Vec2(comptime T: type) type {
         x: T,
         y: T,
 
+        pub fn length(self: Self) T {
+            const v = self.toSimd();
+            return @sqrt(@reduce(.Add, v * v));
+        }
+
         inline fn fromSimd(simd: SimdVec2) Self {
             return @as(Self, @bitCast(simd));
         }
@@ -65,7 +70,7 @@ pub fn Vec3(comptime T: type) type {
             };
         }
 
-        pub fn magnitude(self: Self) T {
+        pub fn length(self: Self) T {
             const v = self.toSimd();
             return @sqrt(@reduce(.Add, v * v));
         }
@@ -83,4 +88,17 @@ pub fn Vec3(comptime T: type) type {
             return @as(SimdVec3, @bitCast(self));
         }
     };
+}
+
+test "Vec2.length" {
+    const testing = @import("std").testing;
+    const Vec2f32 = Vec2(f32);
+
+    try testing.expect((Vec2f32{ .x = 3.0, .y = 4.0 }).length() == 5.0);
+}
+test "Vec3.length" {
+    const testing = @import("std").testing;
+    const Vec3f32 = Vec3(f32);
+
+    try testing.expect((Vec3f32{ .x = 3.0, .y = 4.0, .z = 12.0 }).length() == 13.0);
 }

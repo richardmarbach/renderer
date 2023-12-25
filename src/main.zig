@@ -119,3 +119,7 @@ pub fn main() !void {
         display.render(draw_buffer.buffer);
     }
 }
+
+test {
+    std.testing.refAllDecls(@This());
+}
