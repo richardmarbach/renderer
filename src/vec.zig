@@ -7,6 +7,21 @@ pub fn Vec2(comptime T: type) type {
         x: T,
         y: T,
 
+        pub fn add(self: Self, other: Self) Self {
+            const v = self.toSimd() + other.toSimd();
+            return fromSimd(v);
+        }
+
+        pub fn sub(self: Self, other: Self) Self {
+            const v = self.toSimd() - other.toSimd();
+            return fromSimd(v);
+        }
+
+        pub fn add_s(self: Self, n: T) Self {
+            const amount: SimdVec2 = @splat(n);
+            return fromSimd(self.toSimd() + amount);
+        }
+
         pub fn length(self: Self) T {
             const v = self.toSimd();
             return @sqrt(@reduce(.Add, v * v));
@@ -62,12 +77,14 @@ pub fn Vec3(comptime T: type) type {
             };
         }
 
+        pub fn add(self: Self, other: Self) Self {
+            const v = self.toSimd() + other.toSimd();
+            return fromSimd(v);
+        }
+
         pub fn sub(self: Self, other: Self) Self {
-            return Self{
-                .x = self.x - other.x,
-                .y = self.y - other.y,
-                .z = self.z - other.z,
-            };
+            const v = self.toSimd() - other.toSimd();
+            return fromSimd(v);
         }
 
         pub fn length(self: Self) T {
@@ -90,12 +107,20 @@ pub fn Vec3(comptime T: type) type {
     };
 }
 
+test "Vec2.add" {
+    const std = @import("std");
+    const Vec2f32 = Vec2(f32);
+
+    try std.testing.expect(std.meta.eql((Vec2f32{ .x = 1.0, .y = 2.0 }).add(Vec2f32{ .x = 3.0, .y = 4.0 }), Vec2f32{ .x = 4.0, .y = 6.0 }));
+}
+
 test "Vec2.length" {
     const testing = @import("std").testing;
     const Vec2f32 = Vec2(f32);
 
     try testing.expect((Vec2f32{ .x = 3.0, .y = 4.0 }).length() == 5.0);
 }
+
 test "Vec3.length" {
     const testing = @import("std").testing;
     const Vec3f32 = Vec3(f32);
