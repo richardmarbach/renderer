@@ -32,6 +32,11 @@ pub fn Vec2(comptime T: type) type {
             return fromSimd(self.toSimd() + amount);
         }
 
+        pub fn normalize(self: Self) Self {
+            const len = self.length();
+            return self.div(len);
+        }
+
         pub fn dot(self: Self, other: Self) T {
             const a = self.toSimd();
             const b = other.toSimd();
@@ -121,6 +126,11 @@ pub fn Vec3(comptime T: type) type {
         pub fn div(self: Self, n: T) Self {
             const amount: SimdVec3 = @splat(n);
             return fromSimd(self.toSimd() / amount);
+        }
+
+        pub fn normalize(self: Self) Self {
+            const len = self.length();
+            return self.div(len);
         }
 
         pub fn dot(self: Self, other: Self) T {
