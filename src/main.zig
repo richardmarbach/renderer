@@ -57,20 +57,33 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
     const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
     previous_frame_time = Display.ticks();
 
-    // obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
-    obj_mesh.rotation.x += 1.0 * delta_time;
+    obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
+    // obj_mesh.rotation.x += 1.0 * delta_time;
 
     for (obj_mesh.faces) |face| {
         var face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
 
+        // Transformation
         for (face_vertices, 0..) |vertex, j| {
             face_vertices[j] = vertex
                 .rotate_x(obj_mesh.rotation.x)
                 .rotate_y(obj_mesh.rotation.y)
-                .rotate_z(obj_mesh.rotation.z)
-                .sub(camera_position.*);
+                .rotate_z(obj_mesh.rotation.z);
+            face_vertices[j].z += 5.0;
         }
 
+        // Backface culling
+        const v_a = face_vertices[0];
+        const v_b = face_vertices[1];
+        const v_c = face_vertices[2];
+
+        const normal = (v_b.sub(v_a)).cross(v_c.sub(v_a));
+        const camera_ray = camera_position.sub(v_a);
+        if (normal.dot(camera_ray) < 0.0) {
+            continue;
+        }
+
+        // Projection
         var projected_triangle: Triangle = undefined;
         for (face_vertices, 0..) |vertex, j| {
             var projected_point = project(vertex);

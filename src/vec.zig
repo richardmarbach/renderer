@@ -32,6 +32,11 @@ pub fn Vec2(comptime T: type) type {
             return fromSimd(self.toSimd() + amount);
         }
 
+        pub fn sub_s(self: Self, n: T) Self {
+            const amount: SimdVec2 = @splat(n);
+            return fromSimd(self.toSimd() - amount);
+        }
+
         pub fn normalize(self: Self) Self {
             const len = self.length();
             return self.div(len);
@@ -118,6 +123,11 @@ pub fn Vec3(comptime T: type) type {
             return fromSimd(self.toSimd() + amount);
         }
 
+        pub fn sub_s(self: Self, n: T) Self {
+            const amount: SimdVec3 = @splat(n);
+            return fromSimd(self.toSimd() - amount);
+        }
+
         pub fn mul(self: Self, n: T) Self {
             const amount: SimdVec3 = @splat(n);
             return fromSimd(self.toSimd() * amount);
@@ -140,14 +150,14 @@ pub fn Vec3(comptime T: type) type {
         }
 
         pub fn cross(self: Self, other: Self) Self {
-            const a = self.toSimd();
-            const b = other.toSimd();
+            const a = self;
+            const b = other;
 
-            return fromSimd(SimdVec3{
+            return .{
                 .x = a.y * b.z - a.z * b.y,
                 .y = a.z * b.x - a.x * b.z,
                 .z = a.x * b.y - a.y * b.x,
-            });
+            };
         }
 
         inline fn fromSimd(simd: SimdVec3) Self {
@@ -174,6 +184,18 @@ test "Vec2.length" {
     try testing.expect((Vec2f32{ .x = 3.0, .y = 4.0 }).length() == 5.0);
 }
 
+test "Vec3.add" {
+    const std = @import("std");
+    const Vec3f32 = Vec3(f32);
+    try std.testing.expect(std.meta.eql((Vec3f32{ .x = 1.0, .y = 2.0, .z = 3.0 }).add(Vec3f32{ .x = 3.0, .y = 4.0, .z = 5.0 }), Vec3f32{ .x = 4.0, .y = 6.0, .z = 8.0 }));
+}
+
+test "Vec3.sub" {
+    const std = @import("std");
+    const Vec3f32 = Vec3(f32);
+    try std.testing.expect(std.meta.eql((Vec3f32{ .x = 1.0, .y = 2.0, .z = 3.0 }).sub(Vec3f32{ .x = 3.0, .y = 4.0, .z = 5.0 }), Vec3f32{ .x = -2.0, .y = -2.0, .z = -2.0 }));
+}
+
 test "Vec3.mul" {
     const std = @import("std");
     const Vec3f32 = Vec3(f32);
@@ -185,6 +207,18 @@ test "Vec3.div" {
     const std = @import("std");
     const Vec3f32 = Vec3(f32);
     try std.testing.expect(std.meta.eql((Vec3f32{ .x = 1.0, .y = 2.0, .z = 3.0 }).div(2.0), Vec3f32{ .x = 0.5, .y = 1.0, .z = 1.5 }));
+}
+
+test "Vec3.dot" {
+    const std = @import("std");
+    const Vec3f32 = Vec3(f32);
+    try std.testing.expect((Vec3f32{ .x = 1.0, .y = 2.0, .z = 3.0 }).dot(Vec3f32{ .x = 3.0, .y = 4.0, .z = 5.0 }) == 26.0);
+}
+
+test "Vec3.cross" {
+    const std = @import("std");
+    const Vec3f32 = Vec3(f32);
+    try std.testing.expect(std.meta.eql((Vec3f32{ .x = 1.0, .y = 2.0, .z = 3.0 }).cross(Vec3f32{ .x = 3.0, .y = 4.0, .z = 5.0 }), Vec3f32{ .x = -2.0, .y = 4.0, .z = -2.0 }));
 }
 
 test "Vec3.length" {
