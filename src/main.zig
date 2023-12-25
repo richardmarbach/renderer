@@ -61,15 +61,19 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
     obj_mesh.rotation.x += 1.0 * delta_time;
 
     for (obj_mesh.faces) |face| {
-        const face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
+        var face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
+
+        for (face_vertices, 0..) |vertex, j| {
+            face_vertices[j] = vertex
+                .rotate_x(obj_mesh.rotation.x)
+                .rotate_y(obj_mesh.rotation.y)
+                .rotate_z(obj_mesh.rotation.z)
+                .sub(camera_position.*);
+        }
 
         var projected_triangle: Triangle = undefined;
         for (face_vertices, 0..) |vertex, j| {
-            const rotated_vertex = vertex.rotate_x(obj_mesh.rotation.x)
-                .rotate_y(obj_mesh.rotation.y)
-                .rotate_z(obj_mesh.rotation.z);
-
-            var projected_point = project(rotated_vertex.sub(camera_position.*));
+            var projected_point = project(vertex);
             projected_point.x += draw_buffer.width_f32() / 2.0;
             projected_point.y += draw_buffer.height_f32() / 2.0;
 
