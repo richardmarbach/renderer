@@ -32,6 +32,12 @@ pub fn Vec2(comptime T: type) type {
             return fromSimd(self.toSimd() + amount);
         }
 
+        pub fn dot(self: Self, other: Self) T {
+            const a = self.toSimd();
+            const b = other.toSimd();
+            return @reduce(.Add, a * b);
+        }
+
         pub fn length(self: Self) T {
             const v = self.toSimd();
             return @sqrt(@reduce(.Add, v * v));
@@ -115,6 +121,23 @@ pub fn Vec3(comptime T: type) type {
         pub fn div(self: Self, n: T) Self {
             const amount: SimdVec3 = @splat(n);
             return fromSimd(self.toSimd() / amount);
+        }
+
+        pub fn dot(self: Self, other: Self) T {
+            const a = self.toSimd();
+            const b = other.toSimd();
+            return @reduce(.Add, a * b);
+        }
+
+        pub fn cross(self: Self, other: Self) Self {
+            const a = self.toSimd();
+            const b = other.toSimd();
+
+            return fromSimd(SimdVec3{
+                .x = a.y * b.z - a.z * b.y,
+                .y = a.z * b.x - a.x * b.z,
+                .z = a.x * b.y - a.y * b.x,
+            });
         }
 
         inline fn fromSimd(simd: SimdVec3) Self {
