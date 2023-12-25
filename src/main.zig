@@ -46,7 +46,7 @@ fn project(vec3: Vec3) Vec2 {
 var previous_frame_time: u32 = 0.0;
 var triangles_to_render: std.ArrayList(Triangle) = undefined;
 
-fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, cube_mesh: *mesh.Mesh) !void {
+fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *mesh.Mesh) !void {
     triangles_to_render.clearRetainingCapacity();
 
     const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(previous_frame_time));
@@ -57,16 +57,17 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, cube_mesh: *m
     const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
     previous_frame_time = Display.ticks();
 
-    cube_mesh.rotation = cube_mesh.rotation.add_s(1.0 * delta_time);
+    // obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
+    obj_mesh.rotation.x += 1.0 * delta_time;
 
-    for (cube_mesh.faces) |face| {
-        const face_vertices = [3]Vec3{ cube_mesh.vertices[face.a - 1], cube_mesh.vertices[face.b - 1], cube_mesh.vertices[face.c - 1] };
+    for (obj_mesh.faces) |face| {
+        const face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
 
         var projected_triangle: Triangle = undefined;
         for (face_vertices, 0..) |vertex, j| {
-            const rotated_vertex = vertex.rotate_x(cube_mesh.rotation.x)
-                .rotate_y(cube_mesh.rotation.y)
-                .rotate_z(cube_mesh.rotation.z);
+            const rotated_vertex = vertex.rotate_x(obj_mesh.rotation.x)
+                .rotate_y(obj_mesh.rotation.y)
+                .rotate_z(obj_mesh.rotation.z);
 
             var projected_point = project(rotated_vertex.sub(camera_position.*));
             projected_point.x += draw_buffer.width_f32() / 2.0;
@@ -105,7 +106,7 @@ pub fn main() !void {
 
     const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
 
-    var cube_mesh = try mesh.Mesh.load_obj(allocator, "assets/f22.obj");
+    var obj_mesh = try mesh.Mesh.load_obj(allocator, "assets/cube.obj");
 
     var state = State{};
     while (state.is_running) {
@@ -113,7 +114,7 @@ pub fn main() !void {
 
         draw.clear(&draw_buffer);
 
-        try update(&draw_buffer, &camera_position, &cube_mesh);
+        try update(&draw_buffer, &camera_position, &obj_mesh);
 
         display.render(draw_buffer.buffer);
     }
