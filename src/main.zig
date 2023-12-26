@@ -77,7 +77,7 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
         const v_b = face_vertices[1];
         const v_c = face_vertices[2];
 
-        const normal = (v_b.sub(v_a)).cross(v_c.sub(v_a));
+        const normal = (v_b.sub(v_a).normalize()).cross(v_c.sub(v_a).normalize());
         const camera_ray = camera_position.sub(v_a);
         if (normal.dot(camera_ray) < 0.0) {
             continue;
@@ -103,7 +103,7 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
         draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[1].x)), @as(i64, @intFromFloat(triangle.points[1].y)), 3, 3, 0xFFFFFF00);
         draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[2].x)), @as(i64, @intFromFloat(triangle.points[2].y)), 3, 3, 0xFFFFFF00);
 
-        draw_buffer.triangle(@as(i64, @intFromFloat(triangle.points[0].x)), @as(i64, @intFromFloat(triangle.points[0].y)), @as(i64, @intFromFloat(triangle.points[1].x)), @as(i64, @intFromFloat(triangle.points[1].y)), @as(i64, @intFromFloat(triangle.points[2].x)), @as(i64, @intFromFloat(triangle.points[2].y)), 0xFF00FF00);
+        draw_buffer.triangle(triangle, 0xFF00FF00);
     }
 }
 
