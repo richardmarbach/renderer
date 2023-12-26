@@ -35,6 +35,19 @@ const State = struct {
     fill_triangles: bool = true,
     backface_culling: bool = true,
     projection_type: ProjectionType = .perspective,
+
+    previous_frame_time: u32 = 0,
+    triangles_to_render: std.ArrayList(Triangle),
+
+    pub fn init(allocator: std.mem.Allocator) State {
+        return .{
+            .triangles_to_render = std.ArrayList(Triangle).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *State) void {
+        self.triangles_to_render.deinit();
+    }
 };
 
 fn process_input(state: *State) void {
@@ -89,19 +102,16 @@ fn process_input(state: *State) void {
     }
 }
 
-var previous_frame_time: u32 = 0.0;
-var triangles_to_render: std.ArrayList(Triangle) = undefined;
-
 fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *mesh.Mesh) !void {
-    triangles_to_render.clearRetainingCapacity();
+    state.triangles_to_render.clearRetainingCapacity();
 
-    const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(previous_frame_time));
+    const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(state.previous_frame_time));
     const time_to_wait: i32 = 33 - time_passed;
     if (time_to_wait > 0 and time_to_wait <= 33) {
         Display.wait(@intCast(time_to_wait));
     }
     const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
-    previous_frame_time = Display.ticks();
+    state.previous_frame_time = Display.ticks();
 
     obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
     // obj_mesh.rotation.x += 1.0 * delta_time;
@@ -145,12 +155,12 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
             projected_triangle.points[j] = projected_point;
         }
 
-        try triangles_to_render.append(projected_triangle);
+        try state.triangles_to_render.append(projected_triangle);
     }
 
     draw.grid(draw_buffer, 0xFF333333);
 
-    for (triangles_to_render.items) |triangle| {
+    for (state.triangles_to_render.items) |triangle| {
         if (state.fill_triangles) {
             draw_buffer.fill_triangle(triangle);
         }
@@ -171,9 +181,6 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    triangles_to_render = std.ArrayList(Triangle).init(allocator);
-    defer triangles_to_render.deinit();
-
     var display = try Display.init();
     defer display.deinit();
 
@@ -183,7 +190,8 @@ pub fn main() !void {
     const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
     var obj_mesh = try mesh.Mesh.load_obj(allocator, "assets/cube.obj");
 
-    var state = State{};
+    var state = State.init(allocator);
+    defer state.deinit();
     while (state.is_running) {
         process_input(&state);
 
