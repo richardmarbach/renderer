@@ -99,11 +99,11 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
     draw.grid(draw_buffer, 0xFF333333);
 
     for (triangles_to_render.items) |triangle| {
+        draw_buffer.fill_triangle(triangle, 0xFFFFFFFF);
+        draw_buffer.triangle(triangle, 0xFF000000);
         draw_buffer.fill_rect_point(triangle.points[0], 3, 3, 0xFFFFFF00);
         draw_buffer.fill_rect_point(triangle.points[1], 3, 3, 0xFFFFFF00);
         draw_buffer.fill_rect_point(triangle.points[2], 3, 3, 0xFFFFFF00);
-
-        draw_buffer.triangle(triangle, 0xFF00FF00);
     }
 }
 
@@ -122,7 +122,6 @@ pub fn main() !void {
     defer draw_buffer.deinit();
 
     const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
-
     var obj_mesh = try mesh.Mesh.load_obj(allocator, "assets/cube.obj");
 
     var state = State{};

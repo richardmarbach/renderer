@@ -53,6 +53,10 @@ pub fn Vec2(comptime T: type) type {
             return @sqrt(@reduce(.Add, v * v));
         }
 
+        pub fn trunc(self: Self) Self {
+            return fromSimd(@trunc(self.toSimd()));
+        }
+
         inline fn fromSimd(simd: SimdVec2) Self {
             return @as(Self, @bitCast(simd));
         }

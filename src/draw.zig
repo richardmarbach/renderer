@@ -55,7 +55,10 @@ pub const Buffer = struct {
         self.fill_rect(@as(i64, @intFromFloat(start.x)), @as(i64, @intFromFloat(start.y)), width, height, color);
     }
 
-    pub fn line(self: *Buffer, p0: Point, p1: Point, color: u32) void {
+    pub fn line(self: *Buffer, p0a: Point, p1a: Point, color: u32) void {
+        const p0 = p0a.trunc();
+        const p1 = p1a.trunc();
+
         const delta = p1.sub(p0);
         const side_length = if (@abs(delta.x) >= @abs(delta.y)) @abs(delta.x) else @abs(delta.y);
         const inc = delta.div(side_length);
@@ -69,13 +72,80 @@ pub const Buffer = struct {
     }
 
     pub fn triangle(self: *Buffer, t: Triangle, color: u32) void {
-        const p0 = t.points[0];
-        const p1 = t.points[1];
-        const p2 = t.points[2];
+        const p0 = t.points[0].trunc();
+        const p1 = t.points[1].trunc();
+        const p2 = t.points[2].trunc();
 
         self.line(p0, p1, color);
         self.line(p1, p2, color);
         self.line(p2, p0, color);
+    }
+
+    pub fn fill_triangle(self: *Buffer, t: Triangle, color: u32) void {
+        var p0 = t.points[0].trunc();
+        var p1 = t.points[1].trunc();
+        var p2 = t.points[2].trunc();
+
+        const T = @TypeOf(p0);
+
+        if (p0.y > p1.y) {
+            std.mem.swap(T, &p0, &p1);
+        }
+        if (p1.y > p2.y) {
+            std.mem.swap(T, &p1, &p2);
+
+            if (p0.y > p1.y) {
+                std.mem.swap(T, &p0, &p1);
+            }
+        }
+
+        const m: Point = Point{
+            .x = @trunc(((p2.x - p0.x) * (p1.y - p0.y)) / (p2.y - p0.y) + p0.x),
+            .y = @trunc(p1.y),
+        };
+
+        self.fill_flat_bottom_triangle(p0, p1, m, color);
+        self.fill_flat_top_triangle(p1, m, p2, color);
+    }
+
+    fn fill_flat_bottom_triangle(self: *Buffer, p0: Point, p1: Point, p2: Point, color: u32) void {
+        const side1 = p1.sub(p0);
+        const side2 = p2.sub(p0);
+
+        const inv_s1 = .{ .x = side1.x / side1.y, .y = 1.0 };
+        const inv_s2 = .{ .x = side2.x / side2.y, .y = 1.0 };
+
+        const height: usize = @intFromFloat(side2.y);
+
+        var start = p0;
+        var end = p0;
+
+        for (0..height + 1) |_| {
+            self.line(start, end, color);
+
+            start = start.add(inv_s1);
+            end = end.add(inv_s2);
+        }
+    }
+
+    fn fill_flat_top_triangle(self: *Buffer, p0: Point, p1: Point, p2: Point, color: u32) void {
+        const side1 = p2.sub(p0);
+        const side2 = p2.sub(p1);
+
+        const inv_s1 = .{ .x = side1.x / side1.y, .y = 1.0 };
+        const inv_s2 = .{ .x = side2.x / side2.y, .y = 1.0 };
+
+        const height: usize = @intFromFloat(side2.y);
+
+        var start = p2;
+        var end = p2;
+
+        for (0..height + 1) |_| {
+            self.line(start, end, color);
+
+            start = start.sub(inv_s1);
+            end = end.sub(inv_s2);
+        }
     }
 };
 
