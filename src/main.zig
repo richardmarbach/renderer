@@ -141,8 +141,8 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
         }
 
         // Projection
+        const avg_depth = (face_vertices[0].z + face_vertices[1].z + face_vertices[2].z) / 3.0;
         var projected_triangle: Triangle = undefined;
-        projected_triangle.color = face.color;
         for (face_vertices, 0..) |vertex, j| {
             var projected_point: Vec2 = switch (state.projection_type) {
                 .orthographic => vertex.project_orthographic(ProjectionType.orthographic.fov_factor()),
@@ -154,12 +154,17 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
 
             projected_triangle.points[j] = projected_point;
         }
+        projected_triangle.color = face.color;
+        projected_triangle.z = avg_depth;
 
         try state.triangles_to_render.append(projected_triangle);
     }
+}
 
+pub fn render(display: *Display, state: *State, draw_buffer: *draw.Buffer) void {
     draw.grid(draw_buffer, 0xFF333333);
 
+    std.sort.insertion(Triangle, state.triangles_to_render.items, {}, Triangle.cmp);
     for (state.triangles_to_render.items) |triangle| {
         if (state.fill_triangles) {
             draw_buffer.fill_triangle(triangle);
@@ -174,6 +179,9 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
             draw_buffer.fill_rect_point(triangle.points[2], 3, 3, 0xFFFF0000);
         }
     }
+
+    display.render(draw_buffer.buffer);
+    draw.clear(draw_buffer);
 }
 
 pub fn main() !void {
@@ -195,11 +203,9 @@ pub fn main() !void {
     while (state.is_running) {
         process_input(&state);
 
-        draw.clear(&draw_buffer);
-
         try update(&state, &draw_buffer, &camera_position, &obj_mesh);
 
-        display.render(draw_buffer.buffer);
+        render(&display, &state, &draw_buffer);
     }
 }
 
