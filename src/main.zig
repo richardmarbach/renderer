@@ -16,12 +16,25 @@ pub const Camera = struct {
     fov_angle: f32,
 };
 
+const ProjectionType = enum {
+    orthographic,
+    perspective,
+
+    pub fn fov_factor(comptime self: ProjectionType) f32 {
+        return switch (self) {
+            .orthographic => 128,
+            .perspective => 640,
+        };
+    }
+};
+
 const State = struct {
     is_running: bool = true,
     wireframe: bool = true,
     draw_vertices: bool = false,
     fill_triangles: bool = true,
     backface_culling: bool = true,
+    projection_type: ProjectionType = .perspective,
 };
 
 fn process_input(state: *State) void {
@@ -62,18 +75,18 @@ fn process_input(state: *State) void {
                     c.SDLK_d => {
                         state.backface_culling = false;
                     },
+                    c.SDLK_p => {
+                        state.projection_type = .perspective;
+                    },
+                    c.SDLK_o => {
+                        state.projection_type = .orthographic;
+                    },
                     else => {},
                 }
             },
             else => {},
         }
     }
-}
-
-const FOV_FACTOR: f32 = 640;
-
-fn project(vec3: Vec3) Vec2 {
-    return Vec2{ .x = (vec3.x * FOV_FACTOR) / vec3.z, .y = (vec3.y * FOV_FACTOR) / vec3.z };
 }
 
 var previous_frame_time: u32 = 0.0;
@@ -106,7 +119,6 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
         }
 
         if (state.backface_culling) {
-            // Backface culling
             const v_a = face_vertices[0];
             const v_b = face_vertices[1];
             const v_c = face_vertices[2];
@@ -122,7 +134,11 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
         var projected_triangle: Triangle = undefined;
         projected_triangle.color = face.color;
         for (face_vertices, 0..) |vertex, j| {
-            var projected_point = project(vertex);
+            var projected_point: Vec2 = switch (state.projection_type) {
+                .orthographic => vertex.project_orthographic(ProjectionType.orthographic.fov_factor()),
+                .perspective => vertex.project_perspective(ProjectionType.perspective.fov_factor()),
+            };
+
             projected_point.x += draw_buffer.width_f32() / 2.0;
             projected_point.y += draw_buffer.height_f32() / 2.0;
 
