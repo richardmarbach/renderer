@@ -51,6 +51,10 @@ pub const Buffer = struct {
         }
     }
 
+    pub inline fn fill_rect_point(self: *Buffer, start: Point, width: i64, height: i64, color: u32) void {
+        self.fill_rect(@as(i64, @intFromFloat(start.x)), @as(i64, @intFromFloat(start.y)), width, height, color);
+    }
+
     pub fn line(self: *Buffer, p0: Point, p1: Point, color: u32) void {
         const delta = p1.sub(p0);
         const side_length = if (@abs(delta.x) >= @abs(delta.y)) @abs(delta.x) else @abs(delta.y);
@@ -75,12 +79,12 @@ pub const Buffer = struct {
     }
 };
 
-pub fn grid(buf: *Buffer) void {
+pub fn grid(buf: *Buffer, color: u32) void {
     var y: usize = 0;
     while (y < buf.height) : (y += 10) {
         var x: usize = 0;
         while (x < buf.width) : (x += 10) {
-            buf.set(x, y, 0xFF333333);
+            buf.set(x, y, color);
         }
     }
 }

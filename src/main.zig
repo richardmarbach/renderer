@@ -96,12 +96,12 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
         try triangles_to_render.append(projected_triangle);
     }
 
-    draw.grid(draw_buffer);
+    draw.grid(draw_buffer, 0xFF333333);
 
     for (triangles_to_render.items) |triangle| {
-        draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[0].x)), @as(i64, @intFromFloat(triangle.points[0].y)), 3, 3, 0xFFFFFF00);
-        draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[1].x)), @as(i64, @intFromFloat(triangle.points[1].y)), 3, 3, 0xFFFFFF00);
-        draw_buffer.fill_rect(@as(i64, @intFromFloat(triangle.points[2].x)), @as(i64, @intFromFloat(triangle.points[2].y)), 3, 3, 0xFFFFFF00);
+        draw_buffer.fill_rect_point(triangle.points[0], 3, 3, 0xFFFFFF00);
+        draw_buffer.fill_rect_point(triangle.points[1], 3, 3, 0xFFFFFF00);
+        draw_buffer.fill_rect_point(triangle.points[2], 3, 3, 0xFFFFFF00);
 
         draw_buffer.triangle(triangle, 0xFF00FF00);
     }
