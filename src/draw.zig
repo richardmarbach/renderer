@@ -99,6 +99,16 @@ pub const Buffer = struct {
             }
         }
 
+        if (p1.y == p2.y) {
+            self.fill_flat_bottom_triangle(p0, p1, p2, color);
+            return;
+        }
+
+        if (p0.y == p1.y) {
+            self.fill_flat_top_triangle(p0, p1, p2, color);
+            return;
+        }
+
         const m: Point = Point{
             .x = @trunc(((p2.x - p0.x) * (p1.y - p0.y)) / (p2.y - p0.y) + p0.x),
             .y = @trunc(p1.y),
