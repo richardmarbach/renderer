@@ -141,7 +141,7 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
         }
 
         // Projection
-        const avg_depth = (face_vertices[0].z + face_vertices[1].z + face_vertices[2].z) / 3.0;
+        const depth = (face_vertices[0].z + face_vertices[1].z + face_vertices[2].z);
         var projected_triangle: Triangle = undefined;
         for (face_vertices, 0..) |vertex, j| {
             var projected_point: Vec2 = switch (state.projection_type) {
@@ -155,7 +155,7 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
             projected_triangle.points[j] = projected_point;
         }
         projected_triangle.color = face.color;
-        projected_triangle.z = avg_depth;
+        projected_triangle.z = depth;
 
         try state.triangles_to_render.append(projected_triangle);
     }
