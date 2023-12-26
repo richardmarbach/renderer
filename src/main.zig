@@ -120,6 +120,7 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
 
         // Projection
         var projected_triangle: Triangle = undefined;
+        projected_triangle.color = face.color;
         for (face_vertices, 0..) |vertex, j| {
             var projected_point = project(vertex);
             projected_point.x += draw_buffer.width_f32() / 2.0;
@@ -135,10 +136,10 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
 
     for (triangles_to_render.items) |triangle| {
         if (state.fill_triangles) {
-            draw_buffer.fill_triangle(triangle, 0xFFCCCCCC);
+            draw_buffer.fill_triangle(triangle);
         }
         if (state.wireframe) {
-            draw_buffer.triangle(triangle, 0xFFFFFFFF);
+            draw_buffer.triangle(triangle);
         }
 
         if (state.draw_vertices) {

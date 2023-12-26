@@ -44,6 +44,7 @@ pub const Mesh = struct {
                     .a = try parse_obj_face(values.next().?),
                     .b = try parse_obj_face(values.next().?),
                     .c = try parse_obj_face(values.next().?),
+                    .color = 0xFF555555,
                 };
                 try faces.append(face);
             }

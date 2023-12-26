@@ -71,17 +71,17 @@ pub const Buffer = struct {
         }
     }
 
-    pub fn triangle(self: *Buffer, t: Triangle, color: u32) void {
+    pub fn triangle(self: *Buffer, t: Triangle) void {
         const p0 = t.points[0].trunc();
         const p1 = t.points[1].trunc();
         const p2 = t.points[2].trunc();
 
-        self.line(p0, p1, color);
-        self.line(p1, p2, color);
-        self.line(p2, p0, color);
+        self.line(p0, p1, t.color);
+        self.line(p1, p2, t.color);
+        self.line(p2, p0, t.color);
     }
 
-    pub fn fill_triangle(self: *Buffer, t: Triangle, color: u32) void {
+    pub fn fill_triangle(self: *Buffer, t: Triangle) void {
         var p0 = t.points[0].trunc();
         var p1 = t.points[1].trunc();
         var p2 = t.points[2].trunc();
@@ -100,12 +100,12 @@ pub const Buffer = struct {
         }
 
         if (p1.y == p2.y) {
-            self.fill_flat_bottom_triangle(p0, p1, p2, color);
+            self.fill_flat_bottom_triangle(p0, p1, p2, t.color);
             return;
         }
 
         if (p0.y == p1.y) {
-            self.fill_flat_top_triangle(p0, p1, p2, color);
+            self.fill_flat_top_triangle(p0, p1, p2, t.color);
             return;
         }
 
@@ -114,8 +114,8 @@ pub const Buffer = struct {
             .y = @trunc(p1.y),
         };
 
-        self.fill_flat_bottom_triangle(p0, p1, m, color);
-        self.fill_flat_top_triangle(p1, m, p2, color);
+        self.fill_flat_bottom_triangle(p0, p1, m, t.color);
+        self.fill_flat_top_triangle(p1, m, p2, t.color);
     }
 
     fn fill_flat_bottom_triangle(self: *Buffer, p0: Point, p1: Point, p2: Point, color: u32) void {
