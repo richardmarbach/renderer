@@ -18,6 +18,10 @@ pub const Camera = struct {
 
 const State = struct {
     is_running: bool = true,
+    wireframe: bool = true,
+    draw_vertices: bool = false,
+    fill_triangles: bool = true,
+    backface_culling: bool = true,
 };
 
 fn process_input(state: *State) void {
@@ -28,8 +32,37 @@ fn process_input(state: *State) void {
                 state.is_running = false;
             },
             c.SDL_KEYDOWN => {
-                if (event.key.keysym.sym == c.SDLK_ESCAPE) {
-                    state.is_running = false;
+                switch (event.key.keysym.sym) {
+                    c.SDLK_ESCAPE => {
+                        state.is_running = false;
+                    },
+                    c.SDLK_1 => {
+                        state.wireframe = true;
+                        state.draw_vertices = true;
+                        state.fill_triangles = false;
+                    },
+                    c.SDLK_2 => {
+                        state.wireframe = true;
+                        state.draw_vertices = false;
+                        state.fill_triangles = false;
+                    },
+                    c.SDLK_3 => {
+                        state.wireframe = false;
+                        state.draw_vertices = false;
+                        state.fill_triangles = true;
+                    },
+                    c.SDLK_4 => {
+                        state.wireframe = true;
+                        state.draw_vertices = false;
+                        state.fill_triangles = true;
+                    },
+                    c.SDLK_c => {
+                        state.backface_culling = true;
+                    },
+                    c.SDLK_d => {
+                        state.backface_culling = false;
+                    },
+                    else => {},
                 }
             },
             else => {},
@@ -46,7 +79,7 @@ fn project(vec3: Vec3) Vec2 {
 var previous_frame_time: u32 = 0.0;
 var triangles_to_render: std.ArrayList(Triangle) = undefined;
 
-fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *mesh.Mesh) !void {
+fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *mesh.Mesh) !void {
     triangles_to_render.clearRetainingCapacity();
 
     const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(previous_frame_time));
@@ -72,15 +105,17 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
             face_vertices[j].z += 5.0;
         }
 
-        // Backface culling
-        const v_a = face_vertices[0];
-        const v_b = face_vertices[1];
-        const v_c = face_vertices[2];
+        if (state.backface_culling) {
+            // Backface culling
+            const v_a = face_vertices[0];
+            const v_b = face_vertices[1];
+            const v_c = face_vertices[2];
 
-        const normal = (v_b.sub(v_a).normalize()).cross(v_c.sub(v_a).normalize());
-        const camera_ray = camera_position.sub(v_a);
-        if (normal.dot(camera_ray) < 0.0) {
-            continue;
+            const normal = (v_b.sub(v_a).normalize()).cross(v_c.sub(v_a).normalize());
+            const camera_ray = camera_position.sub(v_a);
+            if (normal.dot(camera_ray) < 0.0) {
+                continue;
+            }
         }
 
         // Projection
@@ -99,11 +134,18 @@ fn update(draw_buffer: *draw.Buffer, camera_position: *const Vec3, obj_mesh: *me
     draw.grid(draw_buffer, 0xFF333333);
 
     for (triangles_to_render.items) |triangle| {
-        draw_buffer.fill_triangle(triangle, 0xFFFFFFFF);
-        draw_buffer.triangle(triangle, 0xFF000000);
-        draw_buffer.fill_rect_point(triangle.points[0], 3, 3, 0xFFFFFF00);
-        draw_buffer.fill_rect_point(triangle.points[1], 3, 3, 0xFFFFFF00);
-        draw_buffer.fill_rect_point(triangle.points[2], 3, 3, 0xFFFFFF00);
+        if (state.fill_triangles) {
+            draw_buffer.fill_triangle(triangle, 0xFFCCCCCC);
+        }
+        if (state.wireframe) {
+            draw_buffer.triangle(triangle, 0xFFFFFFFF);
+        }
+
+        if (state.draw_vertices) {
+            draw_buffer.fill_rect_point(triangle.points[0], 3, 3, 0xFFFF0000);
+            draw_buffer.fill_rect_point(triangle.points[1], 3, 3, 0xFFFF0000);
+            draw_buffer.fill_rect_point(triangle.points[2], 3, 3, 0xFFFF0000);
+        }
     }
 }
 
@@ -130,7 +172,7 @@ pub fn main() !void {
 
         draw.clear(&draw_buffer);
 
-        try update(&draw_buffer, &camera_position, &obj_mesh);
+        try update(&state, &draw_buffer, &camera_position, &obj_mesh);
 
         display.render(draw_buffer.buffer);
     }
