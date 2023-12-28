@@ -8,33 +8,33 @@ pub fn Vec2(comptime T: type) type {
         y: T,
 
         pub fn add(self: Self, other: Self) Self {
-            const v = self.toSimd() + other.toSimd();
-            return fromSimd(v);
+            const v = self.to_simd() + other.to_simd();
+            return from_simd(v);
         }
 
         pub fn sub(self: Self, other: Self) Self {
-            const v = self.toSimd() - other.toSimd();
-            return fromSimd(v);
+            const v = self.to_simd() - other.to_simd();
+            return from_simd(v);
         }
 
         pub fn mul(self: Self, n: T) Self {
             const amount: SimdVec2 = @splat(n);
-            return fromSimd(self.toSimd() * amount);
+            return from_simd(self.to_simd() * amount);
         }
 
         pub fn div(self: Self, n: T) Self {
             const amount: SimdVec2 = @splat(n);
-            return fromSimd(self.toSimd() / amount);
+            return from_simd(self.to_simd() / amount);
         }
 
         pub fn add_s(self: Self, n: T) Self {
             const amount: SimdVec2 = @splat(n);
-            return fromSimd(self.toSimd() + amount);
+            return from_simd(self.to_simd() + amount);
         }
 
         pub fn sub_s(self: Self, n: T) Self {
             const amount: SimdVec2 = @splat(n);
-            return fromSimd(self.toSimd() - amount);
+            return from_simd(self.to_simd() - amount);
         }
 
         pub fn normalize(self: Self) Self {
@@ -43,25 +43,25 @@ pub fn Vec2(comptime T: type) type {
         }
 
         pub fn dot(self: Self, other: Self) T {
-            const a = self.toSimd();
-            const b = other.toSimd();
+            const a = self.to_simd();
+            const b = other.to_simd();
             return @reduce(.Add, a * b);
         }
 
         pub fn length(self: Self) T {
-            const v = self.toSimd();
+            const v = self.to_simd();
             return @sqrt(@reduce(.Add, v * v));
         }
 
         pub fn trunc(self: Self) Self {
-            return fromSimd(@trunc(self.toSimd()));
+            return from_simd(@trunc(self.to_simd()));
         }
 
-        inline fn fromSimd(simd: SimdVec2) Self {
+        inline fn from_simd(simd: SimdVec2) Self {
             return @as(Self, @bitCast(simd));
         }
 
-        inline fn toSimd(self: Self) SimdVec2 {
+        inline fn to_simd(self: Self) SimdVec2 {
             return @as(SimdVec2, @bitCast(self));
         }
     };
@@ -108,38 +108,38 @@ pub fn Vec3(comptime T: type) type {
         }
 
         pub fn add(self: Self, other: Self) Self {
-            const v = self.toSimd() + other.toSimd();
-            return fromSimd(v);
+            const v = self.to_simd() + other.to_simd();
+            return from_simd(v);
         }
 
         pub fn sub(self: Self, other: Self) Self {
-            const v = self.toSimd() - other.toSimd();
-            return fromSimd(v);
+            const v = self.to_simd() - other.to_simd();
+            return from_simd(v);
         }
 
         pub fn length(self: Self) T {
-            const v = self.toSimd();
+            const v = self.to_simd();
             return @sqrt(@reduce(.Add, v * v));
         }
 
         pub fn add_s(self: Self, n: T) Self {
             const amount: SimdVec3 = @splat(n);
-            return fromSimd(self.toSimd() + amount);
+            return from_simd(self.to_simd() + amount);
         }
 
         pub fn sub_s(self: Self, n: T) Self {
             const amount: SimdVec3 = @splat(n);
-            return fromSimd(self.toSimd() - amount);
+            return from_simd(self.to_simd() - amount);
         }
 
         pub fn mul(self: Self, n: T) Self {
             const amount: SimdVec3 = @splat(n);
-            return fromSimd(self.toSimd() * amount);
+            return from_simd(self.to_simd() * amount);
         }
 
         pub fn div(self: Self, n: T) Self {
             const amount: SimdVec3 = @splat(n);
-            return fromSimd(self.toSimd() / amount);
+            return from_simd(self.to_simd() / amount);
         }
 
         pub fn normalize(self: Self) Self {
@@ -148,8 +148,8 @@ pub fn Vec3(comptime T: type) type {
         }
 
         pub fn dot(self: Self, other: Self) T {
-            const a = self.toSimd();
-            const b = other.toSimd();
+            const a = self.to_simd();
+            const b = other.to_simd();
             return @reduce(.Add, a * b);
         }
 
@@ -164,6 +164,10 @@ pub fn Vec3(comptime T: type) type {
             };
         }
 
+        pub fn to_vec4(self: Self, w: T) Vec4(T) {
+            return Vec4(T){ .x = self.x, .y = self.y, .z = self.z, .w = w };
+        }
+
         pub inline fn project_perspective(self: Self, comptime fov_factor: f32) Vec2(T) {
             return Vec2(T){ .x = (self.x * fov_factor) / self.z, .y = (self.y * fov_factor) / self.z };
         }
@@ -172,12 +176,83 @@ pub fn Vec3(comptime T: type) type {
             return Vec2(T){ .x = (self.x * fov_factor), .y = (self.y * fov_factor) };
         }
 
-        inline fn fromSimd(simd: SimdVec3) Self {
+        inline fn from_simd(simd: SimdVec3) Self {
             return @as(Self, @bitCast(simd));
         }
 
-        inline fn toSimd(self: Self) SimdVec3 {
+        inline fn to_simd(self: Self) SimdVec3 {
             return @as(SimdVec3, @bitCast(self));
+        }
+    };
+}
+
+pub fn Vec4(comptime T: type) type {
+    const SimdVec4 = @Vector(4, T);
+
+    return packed struct {
+        const Self = @This();
+
+        x: T,
+        y: T,
+        z: T,
+        w: T,
+
+        pub fn add(self: Self, other: Self) Self {
+            const v = self.to_simd() + other.to_simd();
+            return from_simd(v);
+        }
+
+        pub fn sub(self: Self, other: Self) Self {
+            const v = self.to_simd() - other.to_simd();
+            return from_simd(v);
+        }
+
+        pub fn length(self: Self) T {
+            const v = self.to_simd();
+            return @sqrt(@reduce(.Add, v * v));
+        }
+
+        pub fn add_s(self: Self, n: T) Self {
+            const amount: SimdVec4 = @splat(n);
+            return from_simd(self.to_simd() + amount);
+        }
+
+        pub fn sub_s(self: Self, n: T) Self {
+            const amount: SimdVec4 = @splat(n);
+            return from_simd(self.to_simd() - amount);
+        }
+
+        pub fn mul(self: Self, n: T) Self {
+            const amount: SimdVec4 = @splat(n);
+            return from_simd(self.to_simd() * amount);
+        }
+
+        pub fn div(self: Self, n: T) Self {
+            const amount: SimdVec4 = @splat(n);
+            return from_simd(self.to_simd() / amount);
+        }
+
+        pub fn normalize(self: Self) Self {
+            const len = self.length();
+            return self.div(len);
+        }
+
+        pub fn dot(self: Self, other: Self) T {
+            const a = self.to_simd();
+            const b = other.to_simd();
+            return @reduce(.Add, a * b);
+        }
+
+        pub fn to_vec3(self: Self) Vec3(T) {
+            return Vec3(T){ .x = self.x, .y = self.y, .z = self.z };
+        }
+
+        inline fn from_simd(simd: SimdVec4) Self {
+            return @as(Self, @bitCast(simd));
+        }
+
+        inline fn to_simd(self: Self) SimdVec4 {
+            return @as(SimdVec4, @bitCast(self));
         }
     };
 }

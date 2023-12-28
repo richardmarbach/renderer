@@ -7,6 +7,9 @@ const Triangle = @import("triangle.zig").Triangle;
 const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
+
+const Mat4 = @import("matrix.zig").Mat4;
+const Vec4 = vec.Vec4(f32);
 const Vec3 = vec.Vec3(f32);
 const Vec2 = vec.Vec2(f32);
 
@@ -116,22 +119,30 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
     obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
     // obj_mesh.rotation.x += 1.0 * delta_time;
 
+    obj_mesh.scale.x += 0.002;
+    obj_mesh.scale.y += 0.002;
+    obj_mesh.scale.z += 0.002;
+
+    const scale = Mat4.init_scale(obj_mesh.scale);
+
     for (obj_mesh.faces) |face| {
-        var face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
+        const face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
+
+        var transformed_vertices: [3]Vec3 = undefined;
 
         // Transformation
         for (face_vertices, 0..) |vertex, j| {
-            face_vertices[j] = vertex
-                .rotate_x(obj_mesh.rotation.x)
-                .rotate_y(obj_mesh.rotation.y)
-                .rotate_z(obj_mesh.rotation.z);
-            face_vertices[j].z += 5.0;
+            var transformed_vertex = vertex.to_vec4(1.0);
+            transformed_vertex = scale.mul_vec4(transformed_vertex);
+            transformed_vertex.z += 5.0;
+
+            transformed_vertices[j] = transformed_vertex.to_vec3();
         }
 
         if (state.backface_culling) {
-            const v_a = face_vertices[0];
-            const v_b = face_vertices[1];
-            const v_c = face_vertices[2];
+            const v_a = transformed_vertices[0];
+            const v_b = transformed_vertices[1];
+            const v_c = transformed_vertices[2];
 
             const normal = (v_b.sub(v_a).normalize()).cross(v_c.sub(v_a).normalize());
             const camera_ray = camera_position.sub(v_a);
@@ -141,9 +152,9 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
         }
 
         // Projection
-        const depth = (face_vertices[0].z + face_vertices[1].z + face_vertices[2].z);
+        const depth = (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z);
         var projected_triangle: Triangle = undefined;
-        for (face_vertices, 0..) |vertex, j| {
+        for (transformed_vertices, 0..) |vertex, j| {
             var projected_point: Vec2 = switch (state.projection_type) {
                 .orthographic => vertex.project_orthographic(ProjectionType.orthographic.fov_factor()),
                 .perspective => vertex.project_perspective(ProjectionType.perspective.fov_factor()),

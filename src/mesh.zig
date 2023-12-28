@@ -7,6 +7,8 @@ pub const Mesh = struct {
     vertices: []Vec3,
     faces: []Face,
     rotation: Vec3,
+    scale: Vec3,
+    translation: Vec3,
 
     pub fn load_obj(allocator: std.mem.Allocator, file_path: []const u8) !Mesh {
         var file = try std.fs.cwd().openFile(file_path, .{});
@@ -56,6 +58,8 @@ pub const Mesh = struct {
             .vertices = vertices.items,
             .faces = faces.items,
             .rotation = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
+            .scale = .{ .x = 1.0, .y = 1.0, .z = 1.0 },
+            .translation = .{ .x = 1.0, .y = 1.0, .z = 1.0 },
         };
     }
 };
