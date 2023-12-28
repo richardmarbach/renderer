@@ -176,11 +176,11 @@ pub fn Vec3(comptime T: type) type {
             return Vec2(T){ .x = (self.x * fov_factor), .y = (self.y * fov_factor) };
         }
 
-        inline fn from_simd(simd: SimdVec3) Self {
+        pub inline fn from_simd(simd: SimdVec3) Self {
             return @as(Self, @bitCast(simd));
         }
 
-        inline fn to_simd(self: Self) SimdVec3 {
+        pub inline fn to_simd(self: Self) SimdVec3 {
             return @as(SimdVec3, @bitCast(self));
         }
     };
@@ -247,11 +247,11 @@ pub fn Vec4(comptime T: type) type {
             return Vec3(T){ .x = self.x, .y = self.y, .z = self.z };
         }
 
-        inline fn from_simd(simd: SimdVec4) Self {
+        pub inline fn from_simd(simd: SimdVec4) Self {
             return @as(Self, @bitCast(simd));
         }
 
-        inline fn to_simd(self: Self) SimdVec4 {
+        pub inline fn to_simd(self: Self) SimdVec4 {
             return @as(SimdVec4, @bitCast(self));
         }
     };

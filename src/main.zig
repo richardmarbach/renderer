@@ -116,14 +116,17 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
     const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
     state.previous_frame_time = Display.ticks();
 
-    obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
     // obj_mesh.rotation.x += 1.0 * delta_time;
-
-    obj_mesh.scale.x += 0.002;
-    obj_mesh.scale.y += 0.002;
-    obj_mesh.scale.z += 0.002;
+    obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
+    obj_mesh.scale.x += 0.2 * delta_time;
+    obj_mesh.translation.z = 5;
 
     const scale = Mat4.init_scale(obj_mesh.scale);
+    const translation = Mat4.init_translation(obj_mesh.translation);
+    const rotation_x = Mat4.init_rotation_x(obj_mesh.rotation.x);
+    const rotation_y = Mat4.init_rotation_y(obj_mesh.rotation.y);
+    const rotation_z = Mat4.init_rotation_z(obj_mesh.rotation.z);
+    const world = scale.mul(rotation_x).mul(rotation_y).mul(rotation_z).mul(translation);
 
     for (obj_mesh.faces) |face| {
         const face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
@@ -132,9 +135,7 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
 
         // Transformation
         for (face_vertices, 0..) |vertex, j| {
-            var transformed_vertex = vertex.to_vec4(1.0);
-            transformed_vertex = scale.mul_vec4(transformed_vertex);
-            transformed_vertex.z += 5.0;
+            const transformed_vertex = world.mul_vec4(vertex.to_vec4(1.0));
 
             transformed_vertices[j] = transformed_vertex.to_vec3();
         }

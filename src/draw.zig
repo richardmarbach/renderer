@@ -23,8 +23,9 @@ pub const Buffer = struct {
     }
 
     pub inline fn set(self: *Buffer, x: usize, y: usize, color: u32) void {
-        std.debug.assert(x < self.width and y < self.height);
-        self.buffer[y * @as(usize, @bitCast(self.width)) + x] = color;
+        if (x < self.width and y < self.height) {
+            self.buffer[y * @as(usize, @bitCast(self.width)) + x] = color;
+        }
     }
 
     pub inline fn fill(self: *Buffer, color: u32) void {
