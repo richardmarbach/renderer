@@ -61,6 +61,10 @@ pub const Display = struct {
         c.SDL_RenderPresent(self.renderer);
     }
 
+    pub fn aspect_ratio(self: *Display) f32 {
+        return @as(f32, @floatFromInt(self.height)) / @as(f32, @floatFromInt(self.width));
+    }
+
     pub fn ticks() u32 {
         return c.SDL_GetTicks();
     }

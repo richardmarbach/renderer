@@ -172,10 +172,6 @@ pub fn Vec3(comptime T: type) type {
             return Vec2(T){ .x = (self.x * fov_factor) / self.z, .y = (self.y * fov_factor) / self.z };
         }
 
-        pub inline fn project_orthographic(self: Self, comptime fov_factor: f32) Vec2(T) {
-            return Vec2(T){ .x = (self.x * fov_factor), .y = (self.y * fov_factor) };
-        }
-
         pub inline fn from_simd(simd: SimdVec3) Self {
             return @as(Self, @bitCast(simd));
         }

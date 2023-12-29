@@ -22,9 +22,9 @@ pub const Buffer = struct {
         self.set(@intFromFloat(@round(p.x)), @intFromFloat(@round(p.y)), color);
     }
 
-    pub inline fn set(self: *Buffer, x: usize, y: usize, color: u32) void {
-        if (x < self.width and y < self.height) {
-            self.buffer[y * @as(usize, @bitCast(self.width)) + x] = color;
+    pub inline fn set(self: *Buffer, x: i64, y: i64, color: u32) void {
+        if (x >= 0 and y >= 0 and x < self.width and y < self.height) {
+            self.buffer[@bitCast(y * self.width + x)] = color;
         }
     }
 
@@ -47,7 +47,7 @@ pub const Buffer = struct {
         const w = @min(x + width, self.width);
         for (@max(y_s, 0)..@max(h, 0)) |row| {
             for (@max(x_s, 0)..@max(w, 0)) |col| {
-                self.set(col, row, color);
+                self.set(@bitCast(col), @bitCast(row), color);
             }
         }
     }
@@ -161,9 +161,9 @@ pub const Buffer = struct {
 };
 
 pub fn grid(buf: *Buffer, color: u32) void {
-    var y: usize = 0;
+    var y: i64 = 0;
     while (y < buf.height) : (y += 10) {
-        var x: usize = 0;
+        var x: i64 = 0;
         while (x < buf.width) : (x += 10) {
             buf.set(x, y, color);
         }

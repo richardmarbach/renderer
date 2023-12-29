@@ -55,6 +55,17 @@ pub const Mat4 = struct {
         };
     }
 
+    pub fn project_vec4(self: Mat4, vec: Vec4) Vec4 {
+        var result = self.mul_vec4(vec);
+
+        if (result.w != 0.0) {
+            result.x /= result.w;
+            result.y /= result.w;
+            result.z /= result.w;
+        }
+        return result;
+    }
+
     pub fn init_rotation_x(angle: f32) Mat4 {
         const cos = @cos(angle);
         const sin = @sin(angle);
@@ -126,4 +137,77 @@ pub const Mat4 = struct {
             },
         };
     }
+
+    pub fn init_perspective(fov: f32, aspect: f32, znear: f32, zfar: f32) Mat4 {
+        const f = 1.0 / @tan(fov / 2.0);
+
+        return Mat4{
+            .m = [_][4]f32{
+                [_]f32{ aspect * f, 0.0, 0.0, 0.0 },
+                [_]f32{ 0.0, f, 0.0, 0.0 },
+                [_]f32{ 0.0, 0.0, zfar / (zfar - znear), (-zfar * znear) / (zfar - znear) },
+                [_]f32{ 0.0, 0.0, 1.0, 0.0 },
+            },
+        };
+    }
 };
+
+test "matrix multiplication" {
+    const std = @import("std");
+    const mat = Mat4{
+        .m = [_][4]f32{
+            [_]f32{ 1.0, 2.0, 3.0, 4.0 },
+            [_]f32{ 5.0, 6.0, 7.0, 8.0 },
+            [_]f32{ 9.0, 10.0, 11.0, 12.0 },
+            [_]f32{ 13.0, 14.0, 15.0, 16.0 },
+        },
+    };
+
+    const identity = Mat4.init_identity();
+
+    try std.testing.expect(std.meta.eql(identity.mul(mat), mat));
+    try std.testing.expect(std.meta.eql(mat.mul(identity), mat));
+
+    const scale = Mat4{
+        .m = [_][4]f32{
+            [_]f32{ 0.0, 1.0, 2.0, 3.0 },
+            [_]f32{ 0.0, 1.0, 2.0, 3.0 },
+            [_]f32{ 0.0, 1.0, 2.0, 3.0 },
+            [_]f32{ 0.0, 1.0, 2.0, 3.0 },
+        },
+    };
+
+    const result = Mat4{
+        .m = [_][4]f32{
+            [_]f32{ 0.0, 10.0, 20.0, 30.0 },
+            [_]f32{ 0.0, 26.0, 52.0, 78.0 },
+            [_]f32{ 0.0, 42.0, 84.0, 126.0 },
+            [_]f32{ 0.0, 58.0, 116.0, 174.0 },
+        },
+    };
+
+    try std.testing.expect(std.meta.eql(mat.mul(scale), result));
+}
+
+test "transpose" {
+    const std = @import("std");
+    const mat = Mat4{
+        .m = [_][4]f32{
+            [_]f32{ 1.0, 2.0, 3.0, 4.0 },
+            [_]f32{ 5.0, 6.0, 7.0, 8.0 },
+            [_]f32{ 9.0, 10.0, 11.0, 12.0 },
+            [_]f32{ 13.0, 14.0, 15.0, 16.0 },
+        },
+    };
+
+    const transposed = Mat4{
+        .m = [_][4]f32{
+            [_]f32{ 1.0, 5.0, 9.0, 13.0 },
+            [_]f32{ 2.0, 6.0, 10.0, 14.0 },
+            [_]f32{ 3.0, 7.0, 11.0, 15.0 },
+            [_]f32{ 4.0, 8.0, 12.0, 16.0 },
+        },
+    };
+
+    try std.testing.expect(std.meta.eql(mat.transpose(), transposed));
+}

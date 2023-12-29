@@ -13,38 +13,22 @@ const Vec4 = vec.Vec4(f32);
 const Vec3 = vec.Vec3(f32);
 const Vec2 = vec.Vec2(f32);
 
-pub const Camera = struct {
-    position: Vec3(f32),
-    rotation: Vec3(f32),
-    fov_angle: f32,
-};
-
-const ProjectionType = enum {
-    orthographic,
-    perspective,
-
-    pub fn fov_factor(comptime self: ProjectionType) f32 {
-        return switch (self) {
-            .orthographic => 128,
-            .perspective => 640,
-        };
-    }
-};
-
 const State = struct {
     is_running: bool = true,
     wireframe: bool = true,
     draw_vertices: bool = false,
-    fill_triangles: bool = true,
+    fill_triangles: bool = false,
     backface_culling: bool = true,
-    projection_type: ProjectionType = .perspective,
+
+    projection_matrix: Mat4,
 
     previous_frame_time: u32 = 0,
     triangles_to_render: std.ArrayList(Triangle),
 
-    pub fn init(allocator: std.mem.Allocator) State {
+    pub fn init(allocator: std.mem.Allocator, projection_matrix: Mat4) State {
         return .{
             .triangles_to_render = std.ArrayList(Triangle).init(allocator),
+            .projection_matrix = projection_matrix,
         };
     }
 
@@ -91,12 +75,6 @@ fn process_input(state: *State) void {
                     c.SDLK_d => {
                         state.backface_culling = false;
                     },
-                    c.SDLK_p => {
-                        state.projection_type = .perspective;
-                    },
-                    c.SDLK_o => {
-                        state.projection_type = .orthographic;
-                    },
                     else => {},
                 }
             },
@@ -116,9 +94,11 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
     const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
     state.previous_frame_time = Display.ticks();
 
-    // obj_mesh.rotation.x += 1.0 * delta_time;
-    obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
-    obj_mesh.scale.x += 0.2 * delta_time;
+    _ = delta_time;
+    // obj_mesh.rotation.x += 0.02 * delta_time;
+    obj_mesh.rotation.x += 0.01;
+    // obj_mesh.rotation = obj_mesh.rotation.add_s(1.0 * delta_time);
+    // obj_mesh.scale.x += 0.2 * delta_time;
     obj_mesh.translation.z = 5;
 
     const scale = Mat4.init_scale(obj_mesh.scale);
@@ -126,24 +106,23 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
     const rotation_x = Mat4.init_rotation_x(obj_mesh.rotation.x);
     const rotation_y = Mat4.init_rotation_y(obj_mesh.rotation.y);
     const rotation_z = Mat4.init_rotation_z(obj_mesh.rotation.z);
-    const world = scale.mul(rotation_x).mul(rotation_y).mul(rotation_z).mul(translation);
+    const world = Mat4.init_identity().mul(translation).mul(scale).mul(rotation_x).mul(rotation_y).mul(rotation_z);
 
     for (obj_mesh.faces) |face| {
         const face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
 
-        var transformed_vertices: [3]Vec3 = undefined;
+        var transformed_vertices: [3]Vec4 = undefined;
 
         // Transformation
         for (face_vertices, 0..) |vertex, j| {
             const transformed_vertex = world.mul_vec4(vertex.to_vec4(1.0));
-
-            transformed_vertices[j] = transformed_vertex.to_vec3();
+            transformed_vertices[j] = transformed_vertex;
         }
 
         if (state.backface_culling) {
-            const v_a = transformed_vertices[0];
-            const v_b = transformed_vertices[1];
-            const v_c = transformed_vertices[2];
+            const v_a = transformed_vertices[0].to_vec3();
+            const v_b = transformed_vertices[1].to_vec3();
+            const v_c = transformed_vertices[2].to_vec3();
 
             const normal = (v_b.sub(v_a).normalize()).cross(v_c.sub(v_a).normalize());
             const camera_ray = camera_position.sub(v_a);
@@ -156,15 +135,16 @@ fn update(state: *State, draw_buffer: *draw.Buffer, camera_position: *const Vec3
         const depth = (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z);
         var projected_triangle: Triangle = undefined;
         for (transformed_vertices, 0..) |vertex, j| {
-            var projected_point: Vec2 = switch (state.projection_type) {
-                .orthographic => vertex.project_orthographic(ProjectionType.orthographic.fov_factor()),
-                .perspective => vertex.project_perspective(ProjectionType.perspective.fov_factor()),
-            };
+            var projected_point: Vec4 = state.projection_matrix.project_vec4(vertex);
 
+            projected_point.x *= draw_buffer.width_f32() / 2.0;
+            projected_point.y *= draw_buffer.height_f32() / 2.0;
+
+            // var projected_point = vertex.to_vec3().project_perspective(640);
             projected_point.x += draw_buffer.width_f32() / 2.0;
             projected_point.y += draw_buffer.height_f32() / 2.0;
 
-            projected_triangle.points[j] = projected_point;
+            projected_triangle.points[j] = .{ .x = projected_point.x, .y = projected_point.y };
         }
         projected_triangle.color = face.color;
         projected_triangle.z = depth;
@@ -210,7 +190,9 @@ pub fn main() !void {
     const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
     var obj_mesh = try mesh.Mesh.load_obj(allocator, "assets/cube.obj");
 
-    var state = State.init(allocator);
+    const fov = 60.0 * (std.math.pi / 180.0);
+    const projection_matrix = Mat4.init_perspective(fov, display.aspect_ratio(), 0.1, 100.0);
+    var state = State.init(allocator, projection_matrix);
     defer state.deinit();
     while (state.is_running) {
         process_input(&state);
