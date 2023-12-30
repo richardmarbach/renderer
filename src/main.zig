@@ -28,21 +28,32 @@ const World = struct {
     camera_position: Vec3,
 
     previous_frame_time: u32 = 0,
+
+    allocator: std.mem.Allocator,
     triangles_to_render: std.ArrayList(Triangle),
     draw_buffer: draw.Buffer,
+    objs: std.ArrayList(mesh.Mesh),
 
     pub fn init(allocator: std.mem.Allocator, display: *const Display, camera_position: Vec3, projection_matrix: Mat4) !World {
         return .{
+            .allocator = allocator,
             .triangles_to_render = std.ArrayList(Triangle).init(allocator),
             .projection_matrix = projection_matrix,
             .camera_position = camera_position,
             .draw_buffer = try draw.Buffer.init(allocator, display.width, display.height),
+            .objs = std.ArrayList(mesh.Mesh).init(allocator),
         };
+    }
+
+    pub fn load_obj(self: *World, file_path: []const u8) !void {
+        const obj_mesh = try mesh.Mesh.load_obj(self.allocator, file_path);
+        try self.objs.append(obj_mesh);
     }
 
     pub fn deinit(self: *World) void {
         self.triangles_to_render.deinit();
         self.draw_buffer.deinit();
+        self.objs.deinit();
     }
 
     fn process_input(self: *World) void {
@@ -91,7 +102,7 @@ const World = struct {
         }
     }
 
-    fn update(self: *World, obj_mesh: *mesh.Mesh) !void {
+    fn update(self: *World) !void {
         self.triangles_to_render.clearRetainingCapacity();
 
         const time_passed = @as(i32, @bitCast(Display.ticks())) - @as(i32, @bitCast(self.previous_frame_time));
@@ -102,6 +113,7 @@ const World = struct {
         const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
         self.previous_frame_time = Display.ticks();
 
+        var obj_mesh = &self.objs.items[0];
         // obj_mesh.rotation.x += 0.02 * delta_time;
         // obj_mesh.rotation.x += delta_time;
         obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
@@ -192,17 +204,18 @@ pub fn main() !void {
     var display = try Display.init();
     defer display.deinit();
 
-    var obj_mesh = try mesh.Mesh.load_obj(allocator, "assets/cube.obj");
-
     const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
     const fov = 60.0 * (std.math.pi / 180.0);
     const projection_matrix = Mat4.init_perspective(fov, display.aspect_ratio(), 0.1, 100.0);
     var world = try World.init(allocator, &display, camera_position, projection_matrix);
     defer world.deinit();
+
+    try world.load_obj("assets/cube.obj");
+
     while (world.is_running) {
         world.process_input();
 
-        try world.update(&obj_mesh);
+        try world.update();
 
         world.render(&display);
     }
