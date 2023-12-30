@@ -77,6 +77,10 @@ pub fn Vec3(comptime T: type) type {
         y: T,
         z: T,
 
+        pub fn init(x: T, y: T, z: T) Self {
+            return .{ .x = x, .y = y, .z = z };
+        }
+
         pub fn rotate_x(self: Self, angle: T) Self {
             const cos = @cos(angle);
             const sin = @sin(angle);

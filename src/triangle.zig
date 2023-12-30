@@ -13,6 +13,6 @@ pub const Triangle = struct {
     z: f32,
 
     pub fn cmp(_: void, a: Triangle, b: Triangle) bool {
-        return a.z < b.z;
+        return a.z > b.z;
     }
 };

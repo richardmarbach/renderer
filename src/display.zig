@@ -49,31 +49,39 @@ pub const Display = struct {
         c.SDL_Quit();
     }
 
-    pub fn clear(self: *Display) void {
+    pub inline fn clear(self: *Display) void {
         _ = c.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
         _ = c.SDL_RenderClear(self.renderer);
     }
 
-    pub fn render(self: *Display, buffer: []u32) void {
+    pub inline fn render(self: *Display, buffer: []u32) void {
         _ = c.SDL_UpdateTexture(self.buffer_texture, null, buffer.ptr, @bitCast(self.width * @sizeOf(i32)));
         _ = c.SDL_RenderCopy(self.renderer, self.buffer_texture, null, null);
 
         c.SDL_RenderPresent(self.renderer);
     }
 
-    pub fn aspect_ratio(self: *Display) f32 {
-        return @as(f32, @floatFromInt(self.height)) / @as(f32, @floatFromInt(self.width));
+    pub inline fn aspect_ratio(self: *Display) f32 {
+        return self.height_f32() / self.width_f32();
     }
 
-    pub fn ticks() u32 {
+    pub inline fn width_f32(self: *Display) f32 {
+        return @floatFromInt(self.width);
+    }
+
+    pub inline fn height_f32(self: *Display) f32 {
+        return @floatFromInt(self.height);
+    }
+
+    pub inline fn ticks() u32 {
         return c.SDL_GetTicks();
     }
 
-    pub fn delta_time(previous_frame_time: u32) f32 {
+    pub inline fn delta_time(previous_frame_time: u32) f32 {
         return @as(f32, @floatFromInt(ticks() - previous_frame_time)) / 1000.0;
     }
 
-    pub fn wait(time: u32) void {
+    pub inline fn wait(time: u32) void {
         c.SDL_Delay(time);
     }
 };

@@ -15,6 +15,19 @@ const Vec2 = vec.Vec2(f32);
 
 const Light = struct {
     direction: Vec3,
+    pub fn init(direction: Vec3) Light {
+        return .{ .direction = direction.normalize() };
+    }
+
+    pub fn apply_intensity(color: u32, intensity: f32) u32 {
+        const f = std.math.clamp(intensity, 0.0, 1.0);
+        const a: u32 = (color & 0xFF000000);
+        const r: u32 = @intFromFloat(@as(f32, @floatFromInt(color & 0x00FF0000)) * f);
+        const g: u32 = @intFromFloat(@as(f32, @floatFromInt(color & 0x0000FF00)) * f);
+        const b: u32 = @intFromFloat(@as(f32, @floatFromInt(color & 0x000000FF)) * f);
+
+        return a | (r & 0x00FF0000) | (g & 0x0000FF00) | (b & 0x000000FF);
+    }
 };
 
 const World = struct {
@@ -26,6 +39,7 @@ const World = struct {
 
     projection_matrix: Mat4,
     camera_position: Vec3,
+    light: Light,
 
     previous_frame_time: u32 = 0,
 
@@ -34,12 +48,13 @@ const World = struct {
     draw_buffer: draw.Buffer,
     objs: std.ArrayList(mesh.Mesh),
 
-    pub fn init(allocator: std.mem.Allocator, display: *const Display, camera_position: Vec3, projection_matrix: Mat4) !World {
+    pub fn init(allocator: std.mem.Allocator, display: *const Display, camera_position: Vec3, projection_matrix: Mat4, light: Light) !World {
         return .{
             .allocator = allocator,
             .triangles_to_render = std.ArrayList(Triangle).init(allocator),
             .projection_matrix = projection_matrix,
             .camera_position = camera_position,
+            .light = light,
             .draw_buffer = try draw.Buffer.init(allocator, display.width, display.height),
             .objs = std.ArrayList(mesh.Mesh).init(allocator),
         };
@@ -115,8 +130,8 @@ const World = struct {
 
         var obj_mesh = &self.objs.items[0];
         // obj_mesh.rotation.x += 0.02 * delta_time;
-        // obj_mesh.rotation.x += delta_time;
-        obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
+        obj_mesh.rotation.x += delta_time;
+        // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
         // obj_mesh.scale.x += 0.2 * delta_time;
         obj_mesh.translation.z = 5;
 
@@ -138,17 +153,23 @@ const World = struct {
                 transformed_vertices[j] = transformed_vertex;
             }
 
-            if (self.backface_culling) {
-                const v_a = transformed_vertices[0].to_vec3();
-                const v_b = transformed_vertices[1].to_vec3();
-                const v_c = transformed_vertices[2].to_vec3();
+            const v_a = transformed_vertices[0].to_vec3();
+            const v_b = transformed_vertices[1].to_vec3();
+            const v_c = transformed_vertices[2].to_vec3();
 
-                const normal = (v_b.sub(v_a).normalize()).cross(v_c.sub(v_a).normalize());
+            const normal = v_b.sub(v_a).cross(v_c.sub(v_a)).normalize();
+
+            if (self.backface_culling) {
                 const camera_ray = self.camera_position.sub(v_a);
                 if (normal.dot(camera_ray) < 0.0) {
                     continue;
                 }
             }
+
+            // Lighting
+            var color = face.color;
+            const intensity = -normal.dot(self.light.direction);
+            color = Light.apply_intensity(color, intensity);
 
             // Projection
             const depth = (transformed_vertices[0].z + transformed_vertices[1].z + transformed_vertices[2].z);
@@ -165,7 +186,7 @@ const World = struct {
 
                 projected_triangle.points[j] = .{ .x = projected_point.x, .y = projected_point.y };
             }
-            projected_triangle.color = face.color;
+            projected_triangle.color = color;
             projected_triangle.z = depth;
 
             try self.triangles_to_render.append(projected_triangle);
@@ -204,13 +225,14 @@ pub fn main() !void {
     var display = try Display.init();
     defer display.deinit();
 
-    const camera_position: Vec3 = Vec3{ .x = 0.0, .y = 0.0, .z = -5.0 };
+    const light = Light.init(Vec3.init(0.0, 0.0, 1.0));
+    const camera_position: Vec3 = Vec3.init(0.0, 0.0, -5.0);
     const fov = 60.0 * (std.math.pi / 180.0);
     const projection_matrix = Mat4.init_perspective(fov, display.aspect_ratio(), 0.1, 100.0);
-    var world = try World.init(allocator, &display, camera_position, projection_matrix);
+    var world = try World.init(allocator, &display, camera_position, projection_matrix, light);
     defer world.deinit();
 
-    try world.load_obj("assets/cube.obj");
+    try world.load_obj("assets/f22.obj");
 
     while (world.is_running) {
         world.process_input();
