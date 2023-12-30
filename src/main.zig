@@ -130,8 +130,8 @@ const World = struct {
 
         var obj_mesh = &self.objs.items[0];
         // obj_mesh.rotation.x += 0.02 * delta_time;
-        obj_mesh.rotation.x += 0 * delta_time;
-        // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
+        // obj_mesh.rotation.x += delta_time;
+        obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
         // obj_mesh.scale.x += 0.2 * delta_time;
         obj_mesh.translation.z = 5;
 
@@ -234,7 +234,7 @@ pub fn main() !void {
     var world = try World.init(allocator, &display, camera_position, projection_matrix, light);
     defer world.deinit();
 
-    try world.load_obj("assets/f22.obj");
+    try world.load_obj("assets/cube.obj");
 
     while (world.is_running) {
         world.process_input();

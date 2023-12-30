@@ -66,7 +66,7 @@ pub const Buffer = struct {
 
         var current = p0;
 
-        for (0..@intFromFloat(side_length)) |_| {
+        for (0..@intFromFloat(side_length + 1)) |_| {
             self.set_point(current, color);
             current = current.add(inc);
         }
