@@ -1,4 +1,6 @@
 const std = @import("std");
+const Texture = @import("texture.zig").Texture;
+const Tex2 = @import("texture.zig").Tex2;
 const Triangle = @import("triangle.zig").Triangle;
 const Point = @import("vec.zig").Vec2(f32);
 
@@ -72,14 +74,124 @@ pub const Buffer = struct {
         }
     }
 
-    pub fn triangle(self: *Buffer, t: Triangle) void {
+    pub fn triangle(self: *Buffer, t: Triangle, color: u32) void {
         const p0 = t.points[0].trunc();
         const p1 = t.points[1].trunc();
         const p2 = t.points[2].trunc();
 
-        self.line(p0, p1, t.color);
-        self.line(p1, p2, t.color);
-        self.line(p2, p0, t.color);
+        self.line(p0, p1, color);
+        self.line(p1, p2, color);
+        self.line(p2, p0, color);
+    }
+
+    const TrianglePoint = struct { p: Point, uv: Tex2 };
+    pub fn fill_triangle_texture(self: *Buffer, t: *const Triangle, texture: *const Texture) void {
+        var tp0: TrianglePoint = .{ .p = t.points[0].trunc(), .uv = t.tex_coords[0] };
+        var tp1: TrianglePoint = .{ .p = t.points[1].trunc(), .uv = t.tex_coords[1] };
+        var tp2: TrianglePoint = .{ .p = t.points[2].trunc(), .uv = t.tex_coords[2] };
+
+        const T = @TypeOf(tp0);
+
+        if (tp0.p.y > tp1.p.y) {
+            std.mem.swap(T, &tp0, &tp1);
+        }
+        if (tp1.p.y > tp2.p.y) {
+            std.mem.swap(T, &tp1, &tp2);
+
+            if (tp0.p.y > tp1.p.y) {
+                std.mem.swap(T, &tp0, &tp1);
+            }
+        }
+
+        const p0 = tp0.p;
+        const p1 = tp1.p;
+        const p2 = tp2.p;
+
+        const y0: usize = @intFromFloat(p0.y);
+        const y1: usize = @intFromFloat(p1.y);
+        const y2: usize = @intFromFloat(p2.y);
+
+        // Draw flat-bottom triangle
+        var inv_slope_1: f32 = 0;
+        var inv_slope_2: f32 = 0;
+
+        if (p1.y - p0.y != 0) {
+            inv_slope_1 = (p1.x - p0.x) / (p1.y - p0.y);
+        }
+
+        if (p2.y - p0.y != 0) {
+            inv_slope_2 = (p2.x - p0.x) / (p2.y - p0.y);
+        }
+
+        if (y1 - y0 != 0) {
+            for (y0..y1 + 1) |y_u| {
+                const y: f32 = @floatFromInt(y_u);
+                const x_start = p1.x + (y - p1.y) * inv_slope_1;
+                const x_end = p0.x + (y - p0.y) * inv_slope_2;
+
+                var x0: usize = @intFromFloat(x_start);
+                var x1: usize = @intFromFloat(x_end);
+
+                if (x0 > x1) {
+                    std.mem.swap(usize, &x0, &x1);
+                }
+                for (x0..x1) |x| {
+                    const x_i: i64 = @bitCast(x);
+                    const y_i: i64 = @bitCast(y_u);
+                    self.draw_texel(x_i, y_i, tp0, tp1, tp2, texture);
+                }
+                @import("std").debug.print("\n", .{});
+            }
+        }
+
+        // Draw flat-top triangle
+
+        inv_slope_1 = 0;
+        inv_slope_2 = 0;
+
+        if (p2.y - p1.y != 0) {
+            inv_slope_1 = (p2.x - p1.x) / (p2.y - p1.y);
+        }
+        if (p2.y - p0.y != 0) {
+            inv_slope_2 = (p2.x - p0.x) / (p2.y - p0.y);
+        }
+
+        if (y2 - y1 != 0) {
+            for (y1..y2 + 1) |y_u| {
+                const y: f32 = @floatFromInt(y_u);
+
+                const x_start = p1.x + (y - p1.y) * inv_slope_1;
+                const x_end = p0.x + (y - p0.y) * inv_slope_2;
+
+                var x0: usize = @intFromFloat(@trunc(x_start));
+                var x1: usize = @intFromFloat(@trunc(x_end));
+
+                if (x0 > x1) {
+                    std.mem.swap(usize, &x0, &x1);
+                }
+                for (x0..x1 + 1) |x| {
+                    const x_i: i64 = @bitCast(x);
+                    const y_i: i64 = @bitCast(y_u);
+                    self.draw_texel(x_i, y_i, tp0, tp1, tp2, texture);
+                }
+            }
+        }
+        @import("std").debug.print("\n\n", .{});
+    }
+
+    fn draw_texel(self: *Buffer, x: i64, y: i64, a: TrianglePoint, b: TrianglePoint, c: TrianglePoint, texture: *const Texture) void {
+        const p: Point = .{ .x = @floatFromInt(x), .y = @floatFromInt(y) };
+        const weights = Triangle.barycentric_weights(a.p, b.p, c.p, p);
+
+        const alpha = weights.x;
+        const beta = weights.y;
+        const gamma = weights.z;
+
+        const interpolated_u = a.uv.u * alpha + b.uv.u * beta + c.uv.u * gamma;
+        const interpolated_v = a.uv.v * alpha + b.uv.v * beta + c.uv.v * gamma;
+
+        const color = texture.get_texel(interpolated_u, interpolated_v);
+        self.set(x, y, color);
     }
 
     pub fn fill_triangle(self: *Buffer, t: Triangle) void {

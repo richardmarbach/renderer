@@ -8,6 +8,7 @@ const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 
+const tex = @import("texture.zig");
 const Mat4 = @import("matrix.zig").Mat4;
 const Vec4 = vec.Vec4(f32);
 const Vec3 = vec.Vec3(f32);
@@ -36,6 +37,7 @@ const World = struct {
     draw_vertices: bool = false,
     fill_triangles: bool = false,
     backface_culling: bool = true,
+    render_textures: bool = false,
 
     projection_matrix: Mat4,
     camera_position: Vec3,
@@ -87,27 +89,40 @@ const World = struct {
                             self.wireframe = true;
                             self.draw_vertices = true;
                             self.fill_triangles = false;
+                            self.render_textures = false;
                         },
                         c.SDLK_2 => {
                             self.wireframe = true;
                             self.draw_vertices = false;
                             self.fill_triangles = false;
+                            self.render_textures = false;
                         },
                         c.SDLK_3 => {
                             self.wireframe = false;
                             self.draw_vertices = false;
                             self.fill_triangles = true;
+                            self.render_textures = false;
                         },
                         c.SDLK_4 => {
                             self.wireframe = true;
                             self.draw_vertices = false;
                             self.fill_triangles = true;
+                            self.render_textures = false;
                         },
-                        c.SDLK_c => {
-                            self.backface_culling = true;
+                        c.SDLK_5 => {
+                            self.wireframe = false;
+                            self.draw_vertices = false;
+                            self.fill_triangles = false;
+                            self.render_textures = true;
+                        },
+                        c.SDLK_6 => {
+                            self.wireframe = true;
+                            self.draw_vertices = false;
+                            self.fill_triangles = false;
+                            self.render_textures = true;
                         },
                         c.SDLK_d => {
-                            self.backface_culling = false;
+                            self.backface_culling = !self.backface_culling;
                         },
                         else => {},
                     }
@@ -130,8 +145,8 @@ const World = struct {
 
         var obj_mesh = &self.objs.items[0];
         // obj_mesh.rotation.x += 0.02 * delta_time;
-        // obj_mesh.rotation.x += delta_time;
-        obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
+        obj_mesh.rotation.x += delta_time;
+        // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
         // obj_mesh.scale.x += 0.2 * delta_time;
         obj_mesh.translation.z = 5;
 
@@ -143,7 +158,7 @@ const World = struct {
         const world = Mat4.init_identity().mul(translation).mul(scale).mul(rotation_x).mul(rotation_y).mul(rotation_z);
 
         for (obj_mesh.faces) |face| {
-            const face_vertices = [3]Vec3{ obj_mesh.vertices[face.a - 1], obj_mesh.vertices[face.b - 1], obj_mesh.vertices[face.c - 1] };
+            const face_vertices = obj_mesh.face_vertices(&face);
 
             var transformed_vertices: [3]Vec4 = undefined;
 
@@ -182,29 +197,39 @@ const World = struct {
 
                 projected_point.y *= -1;
 
-                // var projected_point = vertex.to_vec3().project_perspective(640);
                 projected_point.x += self.draw_buffer.width_f32() / 2.0;
                 projected_point.y += self.draw_buffer.height_f32() / 2.0;
 
                 projected_triangle.points[j] = .{ .x = projected_point.x, .y = projected_point.y };
             }
+            projected_triangle.tex_coords[0] = face.a_uv;
+            projected_triangle.tex_coords[1] = face.b_uv;
+            projected_triangle.tex_coords[2] = face.c_uv;
+
             projected_triangle.color = color;
             projected_triangle.z = depth;
 
             try self.triangles_to_render.append(projected_triangle);
         }
+
+        std.sort.insertion(Triangle, self.triangles_to_render.items, {}, Triangle.cmp);
     }
 
     pub fn render(self: *World, display: *Display) void {
+        display.clear();
         draw.grid(&self.draw_buffer, 0xFF333333);
 
-        std.sort.insertion(Triangle, self.triangles_to_render.items, {}, Triangle.cmp);
         for (self.triangles_to_render.items) |triangle| {
             if (self.fill_triangles) {
                 self.draw_buffer.fill_triangle(triangle);
             }
+
+            if (self.render_textures) {
+                self.draw_buffer.fill_triangle_texture(&triangle, self.objs.items[0].texture);
+            }
+
             if (self.wireframe) {
-                self.draw_buffer.triangle(triangle);
+                self.draw_buffer.triangle(triangle, 0xFFFFFFFF);
             }
 
             if (self.draw_vertices) {
@@ -234,7 +259,9 @@ pub fn main() !void {
     var world = try World.init(allocator, &display, camera_position, projection_matrix, light);
     defer world.deinit();
 
-    try world.load_obj("assets/cube.obj");
+    // try world.load_obj("assets/cube.obj");
+
+    try world.objs.append(try mesh.Mesh.init_cube(&tex.REDBRICK_TEXTURE));
 
     while (world.is_running) {
         world.process_input();

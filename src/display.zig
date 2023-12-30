@@ -50,7 +50,7 @@ pub const Display = struct {
     }
 
     pub inline fn clear(self: *Display) void {
-        _ = c.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
+        // _ = c.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
         _ = c.SDL_RenderClear(self.renderer);
     }
 

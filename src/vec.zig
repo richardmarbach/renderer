@@ -48,6 +48,10 @@ pub fn Vec2(comptime T: type) type {
             return @reduce(.Add, a * b);
         }
 
+        pub fn cross(self: Self, other: Self) T {
+            return self.x * other.y - self.y * other.x;
+        }
+
         pub fn length(self: Self) T {
             const v = self.to_simd();
             return @sqrt(@reduce(.Add, v * v));
