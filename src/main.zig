@@ -130,7 +130,7 @@ const World = struct {
 
         var obj_mesh = &self.objs.items[0];
         // obj_mesh.rotation.x += 0.02 * delta_time;
-        obj_mesh.rotation.x += delta_time;
+        obj_mesh.rotation.x += 0 * delta_time;
         // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
         // obj_mesh.scale.x += 0.2 * delta_time;
         obj_mesh.translation.z = 5;
@@ -179,6 +179,8 @@ const World = struct {
 
                 projected_point.x *= self.draw_buffer.width_f32() / 2.0;
                 projected_point.y *= self.draw_buffer.height_f32() / 2.0;
+
+                projected_point.y *= -1;
 
                 // var projected_point = vertex.to_vec3().project_perspective(640);
                 projected_point.x += self.draw_buffer.width_f32() / 2.0;
