@@ -1,3 +1,5 @@
+const std = @import("std");
+
 pub const Tex2 = packed struct {
     u: f32,
     v: f32,
@@ -22,7 +24,7 @@ pub const Texture = struct {
         const x: usize = @abs(@as(i64, @intFromFloat(u * self.width_f32())));
         const y: usize = @abs(@as(i64, @intFromFloat(v * self.height_f32())));
 
-        const index = (y * self.width + x) % (self.width * self.height);
+        const index = std.math.clamp(y * self.width + x, 0, (self.width * self.height) - 1);
         return self.material[index];
     }
 

@@ -145,7 +145,7 @@ const World = struct {
 
         var obj_mesh = &self.objs.items[0];
         // obj_mesh.rotation.x += 0.02 * delta_time;
-        obj_mesh.rotation.x += delta_time;
+        obj_mesh.rotation.x += 0 * delta_time;
         // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
         // obj_mesh.scale.x += 0.2 * delta_time;
         obj_mesh.translation.z = 5;
