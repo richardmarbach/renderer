@@ -85,11 +85,20 @@ pub const Buffer = struct {
         self.line(p2, p0, color);
     }
 
-    const TrianglePoint = struct { p: Vec4, uv: Tex2 };
+    const TrianglePoint = struct {
+        p: Vec4,
+        uv: Tex2,
+        fn init(p: Vec4, uv: Tex2) TrianglePoint {
+            return .{
+                .p = .{ .x = @trunc(p.x), .y = @trunc(p.y), .z = p.w, .w = 1 / p.w },
+                .uv = uv,
+            };
+        }
+    };
     pub fn fill_triangle_texture(self: *Buffer, t: *const Triangle, texture: *const Texture) void {
-        var tp0: TrianglePoint = .{ .p = t.points[0], .uv = t.tex_coords[0] };
-        var tp1: TrianglePoint = .{ .p = t.points[1], .uv = t.tex_coords[1] };
-        var tp2: TrianglePoint = .{ .p = t.points[2], .uv = t.tex_coords[2] };
+        var tp0 = TrianglePoint.init(t.points[0], t.tex_coords[0]);
+        var tp1 = TrianglePoint.init(t.points[1], t.tex_coords[1]);
+        var tp2 = TrianglePoint.init(t.points[2], t.tex_coords[2]);
 
         const T = @TypeOf(tp0);
 
@@ -104,9 +113,9 @@ pub const Buffer = struct {
             }
         }
 
-        const p0 = tp0.p.trunc();
-        const p1 = tp1.p.trunc();
-        const p2 = tp2.p.trunc();
+        const p0 = tp0.p;
+        const p1 = tp1.p;
+        const p2 = tp2.p;
 
         const y0: usize = @intFromFloat(p0.y);
         const y1: usize = @intFromFloat(p1.y);
@@ -186,9 +195,10 @@ pub const Buffer = struct {
         const beta = weights.y;
         const gamma = weights.z;
 
-        var interpolated_u = (a.uv.u / a.p.w) * alpha + (b.uv.u / b.p.w) * beta + (c.uv.u / c.p.w) * gamma;
-        var interpolated_v = (a.uv.v / a.p.w) * alpha + (b.uv.v / b.p.w) * beta + (c.uv.v / c.p.w) * gamma;
-        const interpolated_reciprocal_w = (1 / a.p.w) * alpha + (1 / b.p.w) * beta + (1 / c.p.w) * gamma;
+        // z contains w and w contains 1/w
+        var interpolated_u = (a.uv.u / a.p.z) * alpha + (b.uv.u / b.p.z) * beta + (c.uv.u / c.p.z) * gamma;
+        var interpolated_v = (a.uv.v / a.p.z) * alpha + (b.uv.v / b.p.z) * beta + (c.uv.v / c.p.z) * gamma;
+        const interpolated_reciprocal_w = a.p.w * alpha + b.p.w * beta + c.p.w * gamma;
 
         interpolated_u /= interpolated_reciprocal_w;
         interpolated_v /= interpolated_reciprocal_w;
