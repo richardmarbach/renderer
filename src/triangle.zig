@@ -1,5 +1,6 @@
 const Vec2 = @import("vec.zig").Vec2(f32);
 const Vec3 = @import("vec.zig").Vec3(f32);
+const Vec4 = @import("vec.zig").Vec4(f32);
 const Tex2 = @import("texture.zig").Tex2;
 
 pub const Face = struct {
@@ -13,7 +14,7 @@ pub const Face = struct {
 };
 
 pub const Triangle = struct {
-    points: [3]Vec2,
+    points: [3]Vec4,
     tex_coords: [3]Tex2,
     color: u32,
     z: f32,

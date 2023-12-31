@@ -3,6 +3,7 @@ const Texture = @import("texture.zig").Texture;
 const Tex2 = @import("texture.zig").Tex2;
 const Triangle = @import("triangle.zig").Triangle;
 const Point = @import("vec.zig").Vec2(f32);
+const Vec4 = @import("vec.zig").Vec4(f32);
 
 pub const Buffer = struct {
     allocator: std.mem.Allocator,
@@ -75,20 +76,20 @@ pub const Buffer = struct {
     }
 
     pub fn triangle(self: *Buffer, t: Triangle, color: u32) void {
-        const p0 = t.points[0].trunc();
-        const p1 = t.points[1].trunc();
-        const p2 = t.points[2].trunc();
+        const p0 = t.points[0].to_vec2().trunc();
+        const p1 = t.points[1].to_vec2().trunc();
+        const p2 = t.points[2].to_vec2().trunc();
 
         self.line(p0, p1, color);
         self.line(p1, p2, color);
         self.line(p2, p0, color);
     }
 
-    const TrianglePoint = struct { p: Point, uv: Tex2 };
+    const TrianglePoint = struct { p: Vec4, uv: Tex2 };
     pub fn fill_triangle_texture(self: *Buffer, t: *const Triangle, texture: *const Texture) void {
-        var tp0: TrianglePoint = .{ .p = t.points[0].trunc(), .uv = t.tex_coords[0] };
-        var tp1: TrianglePoint = .{ .p = t.points[1].trunc(), .uv = t.tex_coords[1] };
-        var tp2: TrianglePoint = .{ .p = t.points[2].trunc(), .uv = t.tex_coords[2] };
+        var tp0: TrianglePoint = .{ .p = t.points[0], .uv = t.tex_coords[0] };
+        var tp1: TrianglePoint = .{ .p = t.points[1], .uv = t.tex_coords[1] };
+        var tp2: TrianglePoint = .{ .p = t.points[2], .uv = t.tex_coords[2] };
 
         const T = @TypeOf(tp0);
 
@@ -103,9 +104,9 @@ pub const Buffer = struct {
             }
         }
 
-        const p0 = tp0.p;
-        const p1 = tp1.p;
-        const p2 = tp2.p;
+        const p0 = tp0.p.trunc();
+        const p1 = tp1.p.trunc();
+        const p2 = tp2.p.trunc();
 
         const y0: usize = @intFromFloat(p0.y);
         const y1: usize = @intFromFloat(p1.y);
@@ -140,7 +141,6 @@ pub const Buffer = struct {
                     const y_i: i64 = @bitCast(y_u);
                     self.draw_texel(x_i, y_i, tp0, tp1, tp2, texture);
                 }
-                @import("std").debug.print("\n", .{});
             }
         }
 
@@ -176,28 +176,31 @@ pub const Buffer = struct {
                 }
             }
         }
-        @import("std").debug.print("\n\n", .{});
     }
 
     fn draw_texel(self: *Buffer, x: i64, y: i64, a: TrianglePoint, b: TrianglePoint, c: TrianglePoint, texture: *const Texture) void {
         const p: Point = .{ .x = @floatFromInt(x), .y = @floatFromInt(y) };
-        const weights = Triangle.barycentric_weights(a.p, b.p, c.p, p);
+        const weights = Triangle.barycentric_weights(a.p.to_vec2(), b.p.to_vec2(), c.p.to_vec2(), p);
 
         const alpha = weights.x;
         const beta = weights.y;
         const gamma = weights.z;
 
-        const interpolated_u = a.uv.u * alpha + b.uv.u * beta + c.uv.u * gamma;
-        const interpolated_v = a.uv.v * alpha + b.uv.v * beta + c.uv.v * gamma;
+        var interpolated_u = (a.uv.u / a.p.w) * alpha + (b.uv.u / b.p.w) * beta + (c.uv.u / c.p.w) * gamma;
+        var interpolated_v = (a.uv.v / a.p.w) * alpha + (b.uv.v / b.p.w) * beta + (c.uv.v / c.p.w) * gamma;
+        const interpolated_reciprocal_w = (1 / a.p.w) * alpha + (1 / b.p.w) * beta + (1 / c.p.w) * gamma;
+
+        interpolated_u /= interpolated_reciprocal_w;
+        interpolated_v /= interpolated_reciprocal_w;
 
         const color = texture.get_texel(interpolated_u, interpolated_v);
         self.set(x, y, color);
     }
 
     pub fn fill_triangle(self: *Buffer, t: Triangle) void {
-        var p0 = t.points[0].trunc();
-        var p1 = t.points[1].trunc();
-        var p2 = t.points[2].trunc();
+        var p0 = t.points[0].to_vec2().trunc();
+        var p1 = t.points[1].to_vec2().trunc();
+        var p2 = t.points[2].to_vec2().trunc();
 
         const T = @TypeOf(p0);
 

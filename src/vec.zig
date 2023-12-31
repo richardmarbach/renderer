@@ -247,8 +247,16 @@ pub fn Vec4(comptime T: type) type {
             return @reduce(.Add, a * b);
         }
 
+        pub fn to_vec2(self: Self) Vec2(T) {
+            return Vec2(T){ .x = self.x, .y = self.y };
+        }
+
         pub fn to_vec3(self: Self) Vec3(T) {
             return Vec3(T){ .x = self.x, .y = self.y, .z = self.z };
+        }
+
+        pub fn trunc(self: Self) Self {
+            return from_simd(@trunc(self.to_simd()));
         }
 
         pub inline fn from_simd(simd: SimdVec4) Self {

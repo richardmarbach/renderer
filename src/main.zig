@@ -200,7 +200,7 @@ const World = struct {
                 projected_point.x += self.draw_buffer.width_f32() / 2.0;
                 projected_point.y += self.draw_buffer.height_f32() / 2.0;
 
-                projected_triangle.points[j] = .{ .x = projected_point.x, .y = projected_point.y };
+                projected_triangle.points[j] = projected_point;
             }
             projected_triangle.tex_coords[0] = face.a_uv;
             projected_triangle.tex_coords[1] = face.b_uv;
@@ -233,9 +233,9 @@ const World = struct {
             }
 
             if (self.draw_vertices) {
-                self.draw_buffer.fill_rect_point(triangle.points[0], 3, 3, 0xFFFF0000);
-                self.draw_buffer.fill_rect_point(triangle.points[1], 3, 3, 0xFFFF0000);
-                self.draw_buffer.fill_rect_point(triangle.points[2], 3, 3, 0xFFFF0000);
+                self.draw_buffer.fill_rect_point(triangle.points[0].to_vec2(), 3, 3, 0xFFFF0000);
+                self.draw_buffer.fill_rect_point(triangle.points[1].to_vec2(), 3, 3, 0xFFFF0000);
+                self.draw_buffer.fill_rect_point(triangle.points[2].to_vec2(), 3, 3, 0xFFFF0000);
             }
         }
 
