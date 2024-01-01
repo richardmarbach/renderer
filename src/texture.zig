@@ -34,8 +34,8 @@ pub const Texture = struct {
     }
 
     pub fn get_texel(self: *const Texture, u: f32, v: f32) u32 {
-        const x: usize = @abs(@as(i64, @intFromFloat(u * self.width_f32())));
-        const y: usize = @abs(@as(i64, @intFromFloat(v * self.height_f32())));
+        const x: usize = @abs(@as(i64, @intFromFloat(std.math.clamp(u * self.width_f32(), 0, self.width_f32()))));
+        const y: usize = @abs(@as(i64, @intFromFloat(std.math.clamp(v * self.height_f32(), 0, self.height_f32()))));
 
         const index = std.math.clamp(y * self.width + x, 0, (self.width * self.height) - 1);
         return self.material[index];

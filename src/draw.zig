@@ -136,19 +136,14 @@ pub const Buffer = struct {
         if (y1 - y0 != 0) {
             for (y0..y1 + 1) |y_u| {
                 const y: f32 = @floatFromInt(y_u);
-                const x_start = p1.x + (y - p1.y) * inv_slope_1;
-                const x_end = p0.x + (y - p0.y) * inv_slope_2;
+                var x_start = p1.x + (y - p1.y) * inv_slope_1;
+                var x_end = p0.x + (y - p0.y) * inv_slope_2;
 
-                var x0: usize = @intFromFloat(x_start);
-                var x1: usize = @intFromFloat(x_end);
+                if (x_start > x_end) std.mem.swap(f32, &x_start, &x_end);
 
-                if (x0 > x1) {
-                    std.mem.swap(usize, &x0, &x1);
-                }
-                for (x0..x1) |x| {
-                    const x_i: i64 = @bitCast(x);
-                    const y_i: i64 = @bitCast(y_u);
-                    self.draw_texel(x_i, y_i, tp0, tp1, tp2, texture);
+                var x = x_start;
+                while (x <= x_end) : (x += 1) {
+                    self.draw_texel(.{ .x = x, .y = y }, tp0, tp1, tp2, texture);
                 }
             }
         }
@@ -169,26 +164,19 @@ pub const Buffer = struct {
             for (y1..y2 + 1) |y_u| {
                 const y: f32 = @floatFromInt(y_u);
 
-                const x_start = p1.x + (y - p1.y) * inv_slope_1;
-                const x_end = p0.x + (y - p0.y) * inv_slope_2;
+                var x_start = p1.x + (y - p1.y) * inv_slope_1;
+                var x_end = p0.x + (y - p0.y) * inv_slope_2;
+                if (x_start > x_end) std.mem.swap(f32, &x_start, &x_end);
 
-                var x0: usize = @intFromFloat(@trunc(x_start));
-                var x1: usize = @intFromFloat(@trunc(x_end));
-
-                if (x0 > x1) {
-                    std.mem.swap(usize, &x0, &x1);
-                }
-                for (x0..x1 + 1) |x| {
-                    const x_i: i64 = @bitCast(x);
-                    const y_i: i64 = @bitCast(y_u);
-                    self.draw_texel(x_i, y_i, tp0, tp1, tp2, texture);
+                var x = x_start;
+                while (x <= x_end) : (x += 1) {
+                    self.draw_texel(.{ .x = x, .y = y }, tp0, tp1, tp2, texture);
                 }
             }
         }
     }
 
-    fn draw_texel(self: *Buffer, x: i64, y: i64, a: TrianglePoint, b: TrianglePoint, c: TrianglePoint, texture: *const Texture) void {
-        const p: Point = .{ .x = @floatFromInt(x), .y = @floatFromInt(y) };
+    fn draw_texel(self: *Buffer, p: Point, a: TrianglePoint, b: TrianglePoint, c: TrianglePoint, texture: *const Texture) void {
         const weights = Triangle.barycentric_weights(a.p.to_vec2(), b.p.to_vec2(), c.p.to_vec2(), p);
 
         const alpha = weights.x;
@@ -204,7 +192,7 @@ pub const Buffer = struct {
         interpolated_v /= interpolated_reciprocal_w;
 
         const color = texture.get_texel(interpolated_u, interpolated_v);
-        self.set(x, y, color);
+        self.set_point(p, color);
     }
 
     pub fn fill_triangle(self: *Buffer, t: Triangle) void {
