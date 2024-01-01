@@ -1,5 +1,6 @@
 const c = @cImport({
     @cInclude("SDL2/SDL.h");
+    @cInclude("SDL_image.h");
 });
 
 pub const Display = struct {
@@ -39,6 +40,11 @@ pub const Display = struct {
             c.SDL_Log("Unable to create texture: %s", c.SDL_GetError());
             return error.SDLInitializationFailed;
         };
+
+        if (c.IMG_Init(c.IMG_INIT_PNG) & c.IMG_INIT_PNG != c.IMG_INIT_PNG) {
+            c.SDL_Log("Unable to initialize SDL_image: %s", c.SDL_GetError());
+            return error.SDLInitializationFailed;
+        }
 
         return Display{ .window = window, .renderer = renderer, .buffer_texture = buffer_texture, .width = window_width, .height = window_height };
     }

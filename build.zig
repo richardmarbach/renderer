@@ -15,12 +15,14 @@ pub fn build(b: *Builder) void {
         // The SDL package doesn't work for Linux yet, so we rely on system
         // packages for now.
         exe.linkSystemLibrary("SDL2");
+        exe.linkSystemLibrary("SDL2_image");
     } else {
         const sdl_dep = b.dependency("sdl", .{
             .optimize = .ReleaseFast,
             .target = target,
         });
         exe.linkLibrary(sdl_dep.artifact("SDL2"));
+        exe.linkLibrary(sdl_dep.artifact("SDL2_image"));
     }
 
     b.installArtifact(exe);
@@ -40,12 +42,14 @@ pub fn build(b: *Builder) void {
         // The SDL package doesn't work for Linux yet, so we rely on system
         // packages for now.
         unit_tests.linkSystemLibrary("SDL2");
+        unit_tests.linkSystemLibrary("SDL2_image");
     } else {
         const sdl_dep = b.dependency("sdl", .{
             .optimize = .ReleaseFast,
             .target = target,
         });
         unit_tests.linkLibrary(sdl_dep.artifact("SDL2"));
+        unit_tests.linkLibrary(sdl_dep.artifact("SDL2_image"));
     }
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
