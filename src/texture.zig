@@ -13,7 +13,8 @@ pub const Texture = struct {
     width: usize,
     height: usize,
 
-    image: ?image.SDLImage,
+    allocator: ?std.mem.Allocator,
+    image: ?*image.SDLImage,
 
     pub fn init(width: usize, height: usize, material: []const u32) Texture {
         return Texture{
@@ -24,8 +25,11 @@ pub const Texture = struct {
     }
 
     pub fn deinit(self: *Texture) void {
-        if (self.image) |*img| {
+        if (self.image) |img| {
             img.deinit();
+        }
+        if (self.allocator) |alloc| {
+            alloc.destroy(self.image.?);
         }
     }
 
@@ -46,15 +50,16 @@ pub const Texture = struct {
     }
 };
 
-pub fn load_png(path: []const u8) !Texture {
-    const png = try image.SDLImage.load(path);
+pub fn load_png(allocator: std.mem.Allocator, path: []const u8) !*Texture {
+    const png = try image.SDLImage.load(allocator, path);
 
-    return .{
-        .material = png.pixels,
-        .width = png.width,
-        .height = png.height,
-        .image = png,
-    };
+    var t = try allocator.create(Texture);
+    t.allocator = allocator;
+    t.material = png.pixels;
+    t.width = png.width;
+    t.height = png.height;
+    t.image = png;
+    return t;
 }
 
 // pub const REDBRICK_TEXTURE = Texture.init(64, 64, redbrick_texture_data);

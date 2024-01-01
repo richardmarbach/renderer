@@ -49,7 +49,7 @@ const World = struct {
     triangles_to_render: std.ArrayList(Triangle),
     draw_buffer: draw.Buffer,
     objs: std.ArrayList(mesh.Mesh),
-    textures: std.ArrayList(tex.Texture),
+    textures: std.ArrayList(*tex.Texture),
 
     pub fn init(allocator: std.mem.Allocator, display: *const Display, camera_position: Vec3, projection_matrix: Mat4, light: Light) !World {
         return .{
@@ -60,7 +60,7 @@ const World = struct {
             .light = light,
             .draw_buffer = try draw.Buffer.init(allocator, display.width, display.height),
             .objs = std.ArrayList(mesh.Mesh).init(allocator),
-            .textures = std.ArrayList(tex.Texture).init(allocator),
+            .textures = std.ArrayList(*tex.Texture).init(allocator),
         };
     }
 
@@ -71,8 +71,8 @@ const World = struct {
     }
 
     pub fn load_textured_obj(self: *World, file_path: []const u8, texture_path: []const u8) !void {
-        const texture = try tex.Texture.load_png(texture_path);
-        const obj_mesh = try mesh.Mesh.load_obj(self.allocator, file_path, &texture);
+        const texture = try tex.load_png(self.allocator, texture_path);
+        const obj_mesh = try mesh.Mesh.load_obj(self.allocator, file_path, texture);
         try self.objs.append(obj_mesh);
         try self.textures.append(texture);
     }
@@ -85,8 +85,9 @@ const World = struct {
             obj.deinit();
         }
         self.objs.deinit();
-        for (self.textures.items) |*texture| {
+        for (self.textures.items) |texture| {
             texture.deinit();
+            self.allocator.destroy(texture);
         }
         self.textures.deinit();
     }
@@ -162,8 +163,9 @@ const World = struct {
         self.previous_frame_time = Display.ticks();
 
         var obj_mesh = &self.objs.items[0];
+
         // obj_mesh.rotation.x += 0.02 * delta_time;
-        obj_mesh.rotation.x += 1 * delta_time;
+        obj_mesh.rotation.y += 1 * delta_time;
         // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
         // obj_mesh.scale.x += 0.2 * delta_time;
         obj_mesh.translation.z = 5;
@@ -277,11 +279,11 @@ pub fn main() !void {
     var world = try World.init(allocator, &display, camera_position, projection_matrix, light);
     defer world.deinit();
 
-    // try world.load_textured_obj("assets/cube.obj", "assets/cube.png");
-    var texture = try tex.load_png("assets/cube.png");
-    defer texture.deinit();
+    try world.load_textured_obj("assets/cube.obj", "assets/cube.png");
 
-    try world.objs.append(try mesh.Mesh.init_cube(&texture));
+    // var texture = try tex.load_png("assets/cube.png");
+    // defer texture.deinit();
+    // try world.objs.append(try mesh.Mesh.init_cube(&texture));
     // try world.objs.append(try mesh.Mesh.init_cube(&tex.REDBRICK_TEXTURE));
 
     while (world.is_running) {

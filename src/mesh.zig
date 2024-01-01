@@ -31,13 +31,14 @@ pub const Mesh = struct {
     pub fn load_obj(allocator: std.mem.Allocator, file_path: []const u8, texture: *const Texture) !Mesh {
         const obj_file = try obj.load(allocator, file_path);
         return Mesh{
-            .obj = obj_file,
             .vertices = obj_file.vertices.items,
             .faces = obj_file.faces.items,
             .texture = texture,
             .rotation = .{ .x = 0, .y = 0, .z = 0 },
             .scale = .{ .x = 1, .y = 1, .z = 1 },
             .translation = .{ .x = 0, .y = 0, .z = 0 },
+
+            .obj_file = obj_file,
         };
     }
 
