@@ -231,8 +231,6 @@ const World = struct {
 
             try self.triangles_to_render.append(projected_triangle);
         }
-
-        std.sort.insertion(Triangle, self.triangles_to_render.items, {}, Triangle.cmp);
     }
 
     pub fn render(self: *World, display: *Display) void {

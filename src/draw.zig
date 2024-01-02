@@ -8,31 +8,45 @@ const Vec4 = @import("vec.zig").Vec4(f32);
 pub const Buffer = struct {
     allocator: std.mem.Allocator,
     buffer: []u32,
+    zbuffer: []f32,
     width: i64,
     height: i64,
 
     pub fn init(allocator: std.mem.Allocator, width: usize, height: usize) !Buffer {
         std.debug.assert(width <= std.math.maxInt(i64) and height <= std.math.maxInt(i64));
         const buffer = try allocator.alloc(u32, width * height);
-        return .{ .allocator = allocator, .buffer = buffer, .width = @intCast(width), .height = @intCast(height) };
+        const zbuffer = try allocator.alloc(f32, width * height);
+        return .{
+            .allocator = allocator,
+            .buffer = buffer,
+            .zbuffer = zbuffer,
+            .width = @intCast(width),
+            .height = @intCast(height),
+        };
     }
 
     pub fn deinit(self: *Buffer) void {
         self.allocator.free(self.buffer);
+        self.allocator.free(self.zbuffer);
     }
 
-    pub inline fn set_point(self: *Buffer, p: Point, color: u32) void {
-        self.set(@intFromFloat(@round(p.x)), @intFromFloat(@round(p.y)), color);
+    pub inline fn set_point(self: *Buffer, p: Point, color: u32, z: f32) void {
+        self.set(@intFromFloat(@round(p.x)), @intFromFloat(@round(p.y)), color, z);
     }
 
-    pub inline fn set(self: *Buffer, x: i64, y: i64, color: u32) void {
+    pub inline fn set(self: *Buffer, x: i64, y: i64, color: u32, z: f32) void {
         if (x >= 0 and y >= 0 and x < self.width and y < self.height) {
-            self.buffer[@bitCast(y * self.width + x)] = color;
+            const i: usize = @bitCast(y * self.width + x);
+            if (z < self.zbuffer[i]) {
+                self.buffer[i] = color;
+                self.zbuffer[i] = z;
+            }
         }
     }
 
     pub inline fn fill(self: *Buffer, color: u32) void {
         @memset(self.buffer, color);
+        @memset(self.zbuffer, 1);
     }
 
     pub inline fn width_f32(self: *Buffer) f32 {
@@ -50,7 +64,7 @@ pub const Buffer = struct {
         const w = @min(x + width, self.width);
         for (@max(y_s, 0)..@max(h, 0)) |row| {
             for (@max(x_s, 0)..@max(w, 0)) |col| {
-                self.set(@bitCast(col), @bitCast(row), color);
+                self.set(@bitCast(col), @bitCast(row), color, 0);
             }
         }
     }
@@ -70,7 +84,7 @@ pub const Buffer = struct {
         var current = p0;
 
         for (0..@intFromFloat(side_length + 1)) |_| {
-            self.set_point(current, color);
+            self.set_point(current, color, 0);
             current = current.add(inc);
         }
     }
@@ -192,83 +206,100 @@ pub const Buffer = struct {
         interpolated_v /= interpolated_reciprocal_w;
 
         const color = texture.get_texel(interpolated_u, interpolated_v);
-        self.set_point(p, color);
+        self.set_point(p, color, 1 - interpolated_reciprocal_w);
+    }
+
+    fn draw_pixel(self: *Buffer, p: Point, a: Vec4, b: Vec4, c: Vec4, color: u32) void {
+        const weights = Triangle.barycentric_weights(a.to_vec2(), b.to_vec2(), c.to_vec2(), p);
+
+        const alpha = weights.x;
+        const beta = weights.y;
+        const gamma = weights.z;
+
+        // z contains w and w contains 1/w
+        const interpolated_reciprocal_w = a.w * alpha + b.w * beta + c.w * gamma;
+
+        self.set_point(p, color, 1 - interpolated_reciprocal_w);
     }
 
     pub fn fill_triangle(self: *Buffer, t: Triangle) void {
-        var p0 = t.points[0].to_vec2().trunc();
-        var p1 = t.points[1].to_vec2().trunc();
-        var p2 = t.points[2].to_vec2().trunc();
+        var a: Vec4 = .{ .x = @trunc(t.points[0].x), .y = @trunc(t.points[0].y), .z = t.points[0].w, .w = 1 / t.points[0].w };
+        var b: Vec4 = .{ .x = @trunc(t.points[1].x), .y = @trunc(t.points[1].y), .z = t.points[1].w, .w = 1 / t.points[1].w };
+        var c: Vec4 = .{ .x = @trunc(t.points[2].x), .y = @trunc(t.points[2].y), .z = t.points[2].w, .w = 1 / t.points[2].w };
 
-        const T = @TypeOf(p0);
+        const T = @TypeOf(a);
 
-        if (p0.y > p1.y) {
-            std.mem.swap(T, &p0, &p1);
+        if (a.y > b.y) {
+            std.mem.swap(T, &a, &b);
         }
-        if (p1.y > p2.y) {
-            std.mem.swap(T, &p1, &p2);
+        if (b.y > c.y) {
+            std.mem.swap(T, &b, &c);
 
-            if (p0.y > p1.y) {
-                std.mem.swap(T, &p0, &p1);
+            if (a.y > b.y) {
+                std.mem.swap(T, &a, &b);
             }
         }
 
-        if (p1.y == p2.y) {
-            self.fill_flat_bottom_triangle(p0, p1, p2, t.color);
-            return;
+        const p0 = a.to_vec2().trunc();
+        const p1 = b.to_vec2().trunc();
+        const p2 = c.to_vec2().trunc();
+
+        const y0: usize = @intFromFloat(p0.y);
+        const y1: usize = @intFromFloat(p1.y);
+        const y2: usize = @intFromFloat(p2.y);
+
+        // Draw flat-bottom triangle
+        var inv_slope_1: f32 = 0;
+        var inv_slope_2: f32 = 0;
+
+        if (p1.y - p0.y != 0) {
+            inv_slope_1 = (p1.x - p0.x) / (p1.y - p0.y);
         }
 
-        if (p0.y == p1.y) {
-            self.fill_flat_top_triangle(p0, p1, p2, t.color);
-            return;
+        if (p2.y - p0.y != 0) {
+            inv_slope_2 = (p2.x - p0.x) / (p2.y - p0.y);
         }
 
-        const m: Point = Point{
-            .x = @trunc(((p2.x - p0.x) * (p1.y - p0.y)) / (p2.y - p0.y) + p0.x),
-            .y = @trunc(p1.y),
-        };
+        if (y1 - y0 != 0) {
+            for (y0..y1 + 1) |y_u| {
+                const y: f32 = @floatFromInt(y_u);
+                var x_start = p1.x + (y - p1.y) * inv_slope_1;
+                var x_end = p0.x + (y - p0.y) * inv_slope_2;
 
-        self.fill_flat_bottom_triangle(p0, p1, m, t.color);
-        self.fill_flat_top_triangle(p1, m, p2, t.color);
-    }
+                if (x_start > x_end) std.mem.swap(f32, &x_start, &x_end);
 
-    fn fill_flat_bottom_triangle(self: *Buffer, p0: Point, p1: Point, p2: Point, color: u32) void {
-        const side1 = p1.sub(p0);
-        const side2 = p2.sub(p0);
-
-        const inv_s1 = .{ .x = side1.x / side1.y, .y = 1.0 };
-        const inv_s2 = .{ .x = side2.x / side2.y, .y = 1.0 };
-
-        const height: usize = @intFromFloat(side2.y);
-
-        var start = p0;
-        var end = p0;
-
-        for (0..height + 1) |_| {
-            self.line(start, end, color);
-
-            start = start.add(inv_s1);
-            end = end.add(inv_s2);
+                var x = x_start;
+                while (x <= x_end) : (x += 1) {
+                    self.draw_pixel(.{ .x = x, .y = y }, a, b, c, t.color);
+                }
+            }
         }
-    }
 
-    fn fill_flat_top_triangle(self: *Buffer, p0: Point, p1: Point, p2: Point, color: u32) void {
-        const side1 = p2.sub(p0);
-        const side2 = p2.sub(p1);
+        // Draw flat-top triangle
 
-        const inv_s1 = .{ .x = side1.x / side1.y, .y = 1.0 };
-        const inv_s2 = .{ .x = side2.x / side2.y, .y = 1.0 };
+        inv_slope_1 = 0;
+        inv_slope_2 = 0;
 
-        const height: usize = @intFromFloat(side2.y);
+        if (p2.y - p1.y != 0) {
+            inv_slope_1 = (p2.x - p1.x) / (p2.y - p1.y);
+        }
+        if (p2.y - p0.y != 0) {
+            inv_slope_2 = (p2.x - p0.x) / (p2.y - p0.y);
+        }
 
-        var start = p2;
-        var end = p2;
+        if (y2 - y1 != 0) {
+            for (y1..y2 + 1) |y_u| {
+                const y: f32 = @floatFromInt(y_u);
 
-        for (0..height + 1) |_| {
-            self.line(start, end, color);
+                var x_start = p1.x + (y - p1.y) * inv_slope_1;
+                var x_end = p0.x + (y - p0.y) * inv_slope_2;
+                if (x_start > x_end) std.mem.swap(f32, &x_start, &x_end);
 
-            start = start.sub(inv_s1);
-            end = end.sub(inv_s2);
+                var x = x_start;
+                while (x <= x_end) : (x += 1) {
+                    self.draw_pixel(.{ .x = x, .y = y }, a, b, c, t.color);
+                }
+            }
         }
     }
 };
@@ -278,7 +309,7 @@ pub fn grid(buf: *Buffer, color: u32) void {
     while (y < buf.height) : (y += 10) {
         var x: i64 = 0;
         while (x < buf.width) : (x += 10) {
-            buf.set(x, y, color);
+            buf.set(x, y, color, 0);
         }
     }
 }
