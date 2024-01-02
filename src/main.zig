@@ -17,6 +17,8 @@ const Vec2 = vec.Vec2(f32);
 const Camera = struct {
     position: Vec3,
     direction: Vec3,
+    velocity: Vec3,
+    yaw: f32,
 };
 
 const Light = struct {
@@ -49,6 +51,7 @@ const World = struct {
     light: Light,
 
     previous_frame_time: u32 = 0,
+    delta_time: f32 = 0,
 
     allocator: std.mem.Allocator,
     triangles_to_render: std.ArrayList(Triangle),
@@ -145,8 +148,28 @@ const World = struct {
                             self.fill_triangles = false;
                             self.render_textures = true;
                         },
-                        c.SDLK_d => {
+                        c.SDLK_c => {
                             self.backface_culling = !self.backface_culling;
+                        },
+                        c.SDLK_UP => {
+                            self.camera.position.y += 3 * self.delta_time;
+                        },
+                        c.SDLK_DOWN => {
+                            self.camera.position.y -= 3 * self.delta_time;
+                        },
+                        c.SDLK_a => {
+                            self.camera.yaw += 1 * self.delta_time;
+                        },
+                        c.SDLK_d => {
+                            self.camera.yaw -= 1 * self.delta_time;
+                        },
+                        c.SDLK_w => {
+                            self.camera.velocity = self.camera.direction.mul(5 * self.delta_time);
+                            self.camera.position = self.camera.position.add(self.camera.velocity);
+                        },
+                        c.SDLK_s => {
+                            self.camera.velocity = self.camera.direction.mul(5 * self.delta_time);
+                            self.camera.position = self.camera.position.sub(self.camera.velocity);
                         },
                         else => {},
                     }
@@ -164,22 +187,25 @@ const World = struct {
         if (time_to_wait > 0 and time_to_wait <= 33) {
             Display.wait(@intCast(time_to_wait));
         }
-        const delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
+        self.delta_time = @as(f32, @floatFromInt(time_passed)) / 1000.0;
         self.previous_frame_time = Display.ticks();
 
         var obj_mesh = &self.objs.items[0];
 
-        // obj_mesh.rotation.x += 0.02 * delta_time;
-        obj_mesh.rotation.y += 1 * delta_time;
-        // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
-        // obj_mesh.scale.x += 0.2 * delta_time;
+        // obj_mesh.rotation.x += 0.02 * self.delta_time;
+        // obj_mesh.rotation.y += 1 * self.delta_time;
+        // obj_mesh.rotation = obj_mesh.rotation.add_s(self.delta_time);
+        // obj_mesh.scale.x += 0.2 * self.delta_time;
         obj_mesh.translation.z = 4;
 
-        const target = Vec3.init(0, 0, 4);
-        const view = Mat4.lookAt(self.camera.position, target, Vec3.init(0, 1, 0));
+        const up_dir = Vec3.init(0, 1, 0);
+        var target = Vec3.init(0, 0, 1);
+        const camera_yaw_rotation = Mat4.init_rotation_y(self.camera.yaw);
+        self.camera.direction = camera_yaw_rotation.mul_vec4(target.to_vec4(1)).to_vec3();
 
-        self.camera.position.x += 0.8 * delta_time;
-        // self.camera.position.y += 0.8 * delta_time;
+        target = self.camera.position.add(self.camera.direction);
+
+        const view = Mat4.lookAt(self.camera.position, target, up_dir);
 
         const scale = Mat4.init_scale(obj_mesh.scale);
         const translation = Mat4.init_translation(obj_mesh.translation);
@@ -285,7 +311,12 @@ pub fn main() !void {
     defer display.deinit();
 
     const light = Light.init(Vec3.init(0.0, 0.0, 1.0));
-    const camera: Camera = .{ .position = Vec3.init(0.0, 0.0, 0.0), .direction = Vec3.init(0.0, 0.0, 1.0) };
+    const camera: Camera = .{
+        .position = Vec3.init(0.0, 0.0, 0.0),
+        .direction = Vec3.init(0.0, 0.0, 1.0),
+        .velocity = Vec3.init(0.0, 0.0, 1.0),
+        .yaw = 0,
+    };
     const fov = 60.0 * (std.math.pi / 180.0);
     const projection_matrix = Mat4.init_perspective(fov, display.aspect_ratio(), 0.1, 100.0);
     var world = try World.init(allocator, &display, camera, projection_matrix, light);
