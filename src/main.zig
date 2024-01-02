@@ -277,7 +277,7 @@ pub fn main() !void {
     var world = try World.init(allocator, &display, camera_position, projection_matrix, light);
     defer world.deinit();
 
-    try world.load_textured_obj("assets/cube.obj", "assets/cube.png");
+    try world.load_textured_obj("assets/crab.obj", "assets/crab.png");
 
     // var texture = try tex.load_png("assets/cube.png");
     // defer texture.deinit();
