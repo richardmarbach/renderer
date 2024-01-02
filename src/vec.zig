@@ -216,6 +216,10 @@ pub fn Vec4(comptime T: type) type {
             return @sqrt(@reduce(.Add, v * v));
         }
 
+        pub fn neg(self: Self) Self {
+            return from_simd(-self.to_simd());
+        }
+
         pub fn add_s(self: Self, n: T) Self {
             const amount: SimdVec4 = @splat(n);
             return from_simd(self.to_simd() + amount);

@@ -14,6 +14,11 @@ const Vec4 = vec.Vec4(f32);
 const Vec3 = vec.Vec3(f32);
 const Vec2 = vec.Vec2(f32);
 
+const Camera = struct {
+    position: Vec3,
+    direction: Vec3,
+};
+
 const Light = struct {
     direction: Vec3,
     pub fn init(direction: Vec3) Light {
@@ -40,7 +45,7 @@ const World = struct {
     render_textures: bool = false,
 
     projection_matrix: Mat4,
-    camera_position: Vec3,
+    camera: Camera,
     light: Light,
 
     previous_frame_time: u32 = 0,
@@ -51,12 +56,12 @@ const World = struct {
     objs: std.ArrayList(mesh.Mesh),
     textures: std.ArrayList(*tex.Texture),
 
-    pub fn init(allocator: std.mem.Allocator, display: *const Display, camera_position: Vec3, projection_matrix: Mat4, light: Light) !World {
+    pub fn init(allocator: std.mem.Allocator, display: *const Display, camera: Camera, projection_matrix: Mat4, light: Light) !World {
         return .{
             .allocator = allocator,
             .triangles_to_render = std.ArrayList(Triangle).init(allocator),
             .projection_matrix = projection_matrix,
-            .camera_position = camera_position,
+            .camera = camera,
             .light = light,
             .draw_buffer = try draw.Buffer.init(allocator, display.width, display.height),
             .objs = std.ArrayList(mesh.Mesh).init(allocator),
@@ -168,7 +173,13 @@ const World = struct {
         obj_mesh.rotation.y += 1 * delta_time;
         // obj_mesh.rotation = obj_mesh.rotation.add_s(delta_time);
         // obj_mesh.scale.x += 0.2 * delta_time;
-        obj_mesh.translation.z = 5;
+        obj_mesh.translation.z = 4;
+
+        const target = Vec3.init(0, 0, 4);
+        const view = Mat4.lookAt(self.camera.position, target, Vec3.init(0, 1, 0));
+
+        self.camera.position.x += 0.8 * delta_time;
+        // self.camera.position.y += 0.8 * delta_time;
 
         const scale = Mat4.init_scale(obj_mesh.scale);
         const translation = Mat4.init_translation(obj_mesh.translation);
@@ -177,6 +188,8 @@ const World = struct {
         const rotation_z = Mat4.init_rotation_z(obj_mesh.rotation.z);
         const world = Mat4.init_identity().mul(translation).mul(scale).mul(rotation_x).mul(rotation_y).mul(rotation_z);
 
+        const transform_matrix = view.mul(world);
+
         for (obj_mesh.faces) |face| {
             const face_vertices = obj_mesh.face_vertices(&face);
 
@@ -184,7 +197,7 @@ const World = struct {
 
             // Transformation
             for (face_vertices, 0..) |vertex, j| {
-                const transformed_vertex = world.mul_vec4(vertex.to_vec4(1.0));
+                const transformed_vertex = transform_matrix.mul_vec4(vertex.to_vec4(1.0));
                 transformed_vertices[j] = transformed_vertex;
             }
 
@@ -195,7 +208,8 @@ const World = struct {
             const normal = v_b.sub(v_a).cross(v_c.sub(v_a)).normalize();
 
             if (self.backface_culling) {
-                const camera_ray = self.camera_position.sub(v_a);
+                const origin = Vec3.init(0, 0, 0);
+                const camera_ray = origin.sub(v_a);
                 if (normal.dot(camera_ray) < 0.0) {
                     continue;
                 }
@@ -271,13 +285,13 @@ pub fn main() !void {
     defer display.deinit();
 
     const light = Light.init(Vec3.init(0.0, 0.0, 1.0));
-    const camera_position: Vec3 = Vec3.init(0.0, 0.0, -5.0);
+    const camera: Camera = .{ .position = Vec3.init(0.0, 0.0, 0.0), .direction = Vec3.init(0.0, 0.0, 1.0) };
     const fov = 60.0 * (std.math.pi / 180.0);
     const projection_matrix = Mat4.init_perspective(fov, display.aspect_ratio(), 0.1, 100.0);
-    var world = try World.init(allocator, &display, camera_position, projection_matrix, light);
+    var world = try World.init(allocator, &display, camera, projection_matrix, light);
     defer world.deinit();
 
-    try world.load_textured_obj("assets/crab.obj", "assets/crab.png");
+    try world.load_textured_obj("assets/drone.obj", "assets/drone.png");
 
     // var texture = try tex.load_png("assets/cube.png");
     // defer texture.deinit();

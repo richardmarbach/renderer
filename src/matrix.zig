@@ -66,6 +66,21 @@ pub const Mat4 = struct {
         return result;
     }
 
+    pub fn lookAt(eye: Vec3, target: Vec3, up: Vec3) Mat4 {
+        const z = target.sub(eye).normalize();
+        const x = up.cross(z).normalize();
+        const y = z.cross(x);
+
+        return Mat4{
+            .m = [_][4]f32{
+                [_]f32{ x.x, x.y, x.z, -x.dot(eye) },
+                [_]f32{ y.x, y.y, y.z, -y.dot(eye) },
+                [_]f32{ z.x, z.y, z.z, -z.dot(eye) },
+                [_]f32{ 0.0, 0.0, 0.0, 1.0 },
+            },
+        };
+    }
+
     pub fn init_rotation_x(angle: f32) Mat4 {
         const cos = @cos(angle);
         const sin = @sin(angle);
